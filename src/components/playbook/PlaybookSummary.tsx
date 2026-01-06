@@ -4,6 +4,7 @@ import { TrendingDown, TrendingUp, Target, DollarSign } from "lucide-react";
 interface PlaybookSummaryProps {
   totalOriginal: number;
   totalMeta: number;
+  showOriginal?: boolean;
 }
 
 const formatCurrency = (value: number) => {
@@ -13,10 +14,36 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export default function PlaybookSummary({ totalOriginal, totalMeta }: PlaybookSummaryProps) {
+export default function PlaybookSummary({ 
+  totalOriginal, 
+  totalMeta, 
+  showOriginal = true 
+}: PlaybookSummaryProps) {
   const diferenca = totalOriginal - totalMeta;
   const percentualEconomia = totalOriginal > 0 ? ((diferenca / totalOriginal) * 100) : 0;
 
+  // Se for member, mostra apenas a Meta Grifo centralizada
+  if (!showOriginal) {
+    return (
+      <div className="flex justify-center">
+        <Card className="bg-blue-50 border-blue-200 shadow-sm max-w-md w-full">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Meta Grifo</p>
+                <p className="text-3xl font-bold text-blue-900 mt-1">{formatCurrency(totalMeta)}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Target className="h-7 w-7 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Visão completa para admin
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card className="bg-white border-slate-200 shadow-sm">
