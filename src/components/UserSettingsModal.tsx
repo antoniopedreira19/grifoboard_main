@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, User } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, User, RefreshCw, Trash2 } from "lucide-react";
 
 interface UserSettingsModalProps {
   open: boolean;
@@ -17,6 +18,7 @@ const UserSettingsModal = ({ open, onOpenChange }: UserSettingsModalProps) => {
   const { userSession } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   // Pega o nome atual do user_metadata ou da tabela usuarios
   const currentName = userSession?.user?.user_metadata?.full_name || "";
@@ -109,6 +111,66 @@ const UserSettingsModal = ({ open, onOpenChange }: UserSettingsModalProps) => {
             <Label>Email</Label>
             <Input value={userSession?.user?.email || ""} disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Seção de Cache */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Atualização do App
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Se você está vendo uma versão antiga do app, clique no botão abaixo para forçar a atualização.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={clearingCache}
+              onClick={async () => {
+                setClearingCache(true);
+                try {
+                  // Limpa todos os caches do Service Worker
+                  if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                  }
+                  
+                  // Desregistra o Service Worker atual
+                  if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map(reg => reg.unregister()));
+                  }
+
+                  toast({
+                    title: "Cache limpo!",
+                    description: "A página será recarregada com a versão mais recente.",
+                    variant: "gold",
+                  });
+
+                  // Aguarda um pouco e recarrega a página forçando bypass do cache
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1500);
+                } catch (error) {
+                  console.error("Erro ao limpar cache:", error);
+                  toast({
+                    title: "Erro",
+                    description: "Não foi possível limpar o cache. Tente novamente.",
+                    variant: "destructive",
+                  });
+                  setClearingCache(false);
+                }
+              }}
+            >
+              {clearingCache ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Limpar cache e atualizar
+            </Button>
           </div>
         </div>
 
