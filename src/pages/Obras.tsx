@@ -90,7 +90,7 @@ const Obras = ({ onObraSelect }: ObrasPageProps) => {
       setObraAtiva(obra);
       setSelectedObraId(obra.id);
       onObraSelect(obra);
-      navigate("/tarefas");
+      navigate("/playbook");
     } catch (error: any) {
       toast({
         title: "Erro ao selecionar obra",

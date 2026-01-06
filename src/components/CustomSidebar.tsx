@@ -63,9 +63,9 @@ const CustomSidebar = () => {
 
   const menuItems: MenuItem[] = useMemo(
     () => [
-      { path: "/pmp", label: "PMP", icon: KanbanSquare }, // <--- PMP Adicionado Aqui (Antes do PCP)
-      { path: "/tarefas", label: "PCP", icon: LayoutDashboard },
       { path: "/playbook", label: "Playbook", icon: BookOpen },
+      { path: "/pmp", label: "PMP", icon: KanbanSquare },
+      { path: "/tarefas", label: "PCP", icon: LayoutDashboard },
       { path: "/diarioobra", label: "Diário de Obra", icon: FileText },
       { path: "/grifoway", label: "GrifoWay", customIcon: grifoIconGold },
       ...(isAdmin ? [{ path: "/gestao-metas", label: "Gestão de Metas", icon: Target }] : []),
