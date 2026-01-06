@@ -18,6 +18,7 @@ interface SaveAtividadeParams {
     semana_referencia: string;
   };
   restricoesNovas: Restricao[];
+  restricoesParaDeletar: string[];
   currentMaxOrder: number;
 }
 
@@ -38,6 +39,7 @@ export const usePmpMutations = (obraId: string | undefined) => {
       editingId,
       formData,
       restricoesNovas,
+      restricoesParaDeletar,
       currentMaxOrder,
     }: SaveAtividadeParams) => {
       let atividadeId = editingId;
@@ -62,6 +64,13 @@ export const usePmpMutations = (obraId: string | undefined) => {
           currentMaxOrder + 1000
         );
         atividadeId = created.id;
+      }
+
+      // Deletar restrições marcadas para deleção
+      if (restricoesParaDeletar.length > 0) {
+        await Promise.all(
+          restricoesParaDeletar.map((id) => pmpService.deleteRestricao(id))
+        );
       }
 
       // Inserir novas restrições (apenas as que não têm ID)
