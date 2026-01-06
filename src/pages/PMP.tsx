@@ -11,6 +11,7 @@ import {
   PmpAtividadeModal,
   PmpSetorModal,
 } from "@/components/pmp";
+import { NoObraSelected } from "@/components/shared/NoObraSelected";
 import type { PmpAtividade, PmpFormData, Restricao, ColorKey } from "@/types/pmp";
 import { safeParseDate } from "@/utils/pmpDateUtils";
 
@@ -188,11 +189,7 @@ const PMP = () => {
 
   // Early return se não houver obra
   if (!obraAtiva) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Selecione uma obra
-      </div>
-    );
+    return <NoObraSelected />;
   }
 
   return (
