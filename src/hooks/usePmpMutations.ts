@@ -157,8 +157,16 @@ export const usePmpMutations = (obraId: string | undefined) => {
       resolvido: boolean;
     }) => {
       await pmpService.updateRestricao(id, resolvido);
+      return { id, resolvido };
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      if (userId) {
+        if (data.resolvido) {
+          await gamificationService.awardXP(userId, "PMP_RESTRICAO_CONCLUIDA", 20, data.id);
+        } else {
+          await gamificationService.removeXP(userId, "PMP_RESTRICAO_CONCLUIDA", 20, data.id);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: atividadesKey });
       toast({ title: "Restrição atualizada" });
     },
