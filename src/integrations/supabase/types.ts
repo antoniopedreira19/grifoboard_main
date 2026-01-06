@@ -1581,6 +1581,15 @@ export type Database = {
           ultimo_login: string
         }[]
       }
+      get_grifoway_ranking: {
+        Args: { p_empresa_id?: string; p_limit?: number }
+        Returns: {
+          nome: string
+          pontuacao_geral: number
+          posicao: number
+          user_id: string
+        }[]
+      }
       is_company_admin: { Args: never; Returns: boolean }
       is_master_admin: { Args: never; Returns: boolean }
       link_user_to_form: {
