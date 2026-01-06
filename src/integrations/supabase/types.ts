@@ -1224,6 +1224,255 @@ export type Database = {
       }
     }
     Views: {
+      marketplace_empresas: {
+        Row: {
+          ano_fundacao: string | null
+          apresentacao_path: string | null
+          cargo_contato: string | null
+          cidade: string | null
+          created_at: string | null
+          desafios_outro: string | null
+          estado: string | null
+          ferramentas_gestao: string | null
+          id: string | null
+          ja_trabalhou_com_grifo: boolean | null
+          logo_path: string | null
+          nome_contato: string | null
+          nome_empresa: string | null
+          obras_andamento: string | null
+          planejamento_curto_prazo: string | null
+          principais_desafios: string[] | null
+          selo_grifo: boolean | null
+          site: string | null
+          tamanho_empresa: string | null
+          ticket_medio: string | null
+          tipos_obras: string[] | null
+          tipos_obras_outro: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ano_fundacao?: string | null
+          apresentacao_path?: string | null
+          cargo_contato?: string | null
+          cidade?: string | null
+          created_at?: string | null
+          desafios_outro?: string | null
+          estado?: string | null
+          ferramentas_gestao?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          nome_contato?: string | null
+          nome_empresa?: string | null
+          obras_andamento?: string | null
+          planejamento_curto_prazo?: string | null
+          principais_desafios?: string[] | null
+          selo_grifo?: boolean | null
+          site?: string | null
+          tamanho_empresa?: string | null
+          ticket_medio?: string | null
+          tipos_obras?: string[] | null
+          tipos_obras_outro?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ano_fundacao?: string | null
+          apresentacao_path?: string | null
+          cargo_contato?: string | null
+          cidade?: string | null
+          created_at?: string | null
+          desafios_outro?: string | null
+          estado?: string | null
+          ferramentas_gestao?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          nome_contato?: string | null
+          nome_empresa?: string | null
+          obras_andamento?: string | null
+          planejamento_curto_prazo?: string | null
+          principais_desafios?: string[] | null
+          selo_grifo?: boolean | null
+          site?: string | null
+          tamanho_empresa?: string | null
+          ticket_medio?: string | null
+          tipos_obras?: string[] | null
+          tipos_obras_outro?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_fornecedores: {
+        Row: {
+          capacidade_atendimento: string | null
+          categorias_atendidas: string[] | null
+          categorias_outro: string | null
+          certificacoes_path: string | null
+          cidade: string | null
+          cidades_frequentes: string | null
+          created_at: string | null
+          diferenciais: string[] | null
+          diferenciais_outro: string | null
+          estado: string | null
+          fotos_trabalhos_path: string | null
+          id: string | null
+          ja_trabalhou_com_grifo: boolean | null
+          logo_path: string | null
+          nome_empresa: string | null
+          nome_responsavel: string | null
+          portfolio_path: string | null
+          regioes_atendidas: string[] | null
+          selo_grifo: boolean | null
+          site: string | null
+          tempo_atuacao: string | null
+          ticket_medio: string | null
+          tipo_atuacao_outro: string | null
+          tipos_atuacao: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          capacidade_atendimento?: string | null
+          categorias_atendidas?: string[] | null
+          categorias_outro?: string | null
+          certificacoes_path?: string | null
+          cidade?: string | null
+          cidades_frequentes?: string | null
+          created_at?: string | null
+          diferenciais?: string[] | null
+          diferenciais_outro?: string | null
+          estado?: string | null
+          fotos_trabalhos_path?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          nome_empresa?: string | null
+          nome_responsavel?: string | null
+          portfolio_path?: string | null
+          regioes_atendidas?: string[] | null
+          selo_grifo?: boolean | null
+          site?: string | null
+          tempo_atuacao?: string | null
+          ticket_medio?: string | null
+          tipo_atuacao_outro?: string | null
+          tipos_atuacao?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          capacidade_atendimento?: string | null
+          categorias_atendidas?: string[] | null
+          categorias_outro?: string | null
+          certificacoes_path?: string | null
+          cidade?: string | null
+          cidades_frequentes?: string | null
+          created_at?: string | null
+          diferenciais?: string[] | null
+          diferenciais_outro?: string | null
+          estado?: string | null
+          fotos_trabalhos_path?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          nome_empresa?: string | null
+          nome_responsavel?: string | null
+          portfolio_path?: string | null
+          regioes_atendidas?: string[] | null
+          selo_grifo?: boolean | null
+          site?: string | null
+          tempo_atuacao?: string | null
+          ticket_medio?: string | null
+          tipo_atuacao_outro?: string | null
+          tipos_atuacao?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_profissionais: {
+        Row: {
+          certificacoes_path: string | null
+          cidade: string | null
+          cidades_frequentes: string | null
+          created_at: string | null
+          curriculo_path: string | null
+          diferenciais: string[] | null
+          diferenciais_outro: string | null
+          disponibilidade_atual: string | null
+          equipamentos_proprios: string | null
+          especialidades: string[] | null
+          especialidades_outro: string | null
+          estado: string | null
+          fotos_trabalhos_path: string | null
+          funcao_principal: string | null
+          funcao_principal_outro: string | null
+          id: string | null
+          ja_trabalhou_com_grifo: boolean | null
+          logo_path: string | null
+          modalidade_trabalho: string | null
+          nome_completo: string | null
+          obras_relevantes: string | null
+          pretensao_valor: string | null
+          regioes_atendidas: string[] | null
+          selo_grifo: boolean | null
+          tempo_experiencia: string | null
+          user_id: string | null
+        }
+        Insert: {
+          certificacoes_path?: string | null
+          cidade?: string | null
+          cidades_frequentes?: string | null
+          created_at?: string | null
+          curriculo_path?: string | null
+          diferenciais?: string[] | null
+          diferenciais_outro?: string | null
+          disponibilidade_atual?: string | null
+          equipamentos_proprios?: string | null
+          especialidades?: string[] | null
+          especialidades_outro?: string | null
+          estado?: string | null
+          fotos_trabalhos_path?: string | null
+          funcao_principal?: string | null
+          funcao_principal_outro?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          modalidade_trabalho?: string | null
+          nome_completo?: string | null
+          obras_relevantes?: string | null
+          pretensao_valor?: string | null
+          regioes_atendidas?: string[] | null
+          selo_grifo?: boolean | null
+          tempo_experiencia?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          certificacoes_path?: string | null
+          cidade?: string | null
+          cidades_frequentes?: string | null
+          created_at?: string | null
+          curriculo_path?: string | null
+          diferenciais?: string[] | null
+          diferenciais_outro?: string | null
+          disponibilidade_atual?: string | null
+          equipamentos_proprios?: string | null
+          especialidades?: string[] | null
+          especialidades_outro?: string | null
+          estado?: string | null
+          fotos_trabalhos_path?: string | null
+          funcao_principal?: string | null
+          funcao_principal_outro?: string | null
+          id?: string | null
+          ja_trabalhou_com_grifo?: boolean | null
+          logo_path?: string | null
+          modalidade_trabalho?: string | null
+          nome_completo?: string | null
+          obras_relevantes?: string | null
+          pretensao_valor?: string | null
+          regioes_atendidas?: string[] | null
+          selo_grifo?: boolean | null
+          tempo_experiencia?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ranking_grifoway: {
         Row: {
           empresa_id: string | null
