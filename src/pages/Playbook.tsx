@@ -237,7 +237,8 @@ const Playbook = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {playbookData && (
+          {/* Botão Limpar - Apenas para Admin */}
+          {playbookData && isAdmin && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
@@ -261,7 +262,8 @@ const Playbook = () => {
             </AlertDialog>
           )}
 
-          <PlaybookImporter onSave={fetchPlaybook} />
+          {/* Importador - Apenas para Admin */}
+          {isAdmin && <PlaybookImporter onSave={fetchPlaybook} />}
         </div>
       </div>
 
