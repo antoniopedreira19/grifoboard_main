@@ -344,7 +344,7 @@ const GrifoWay = () => {
                     </CardTitle>
                     <CardDescription>Conclua rituais para ganhar XP</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="max-h-[320px] overflow-y-auto space-y-3 pr-2">
                     {/* Item 1: Diário */}
                     <div className="flex items-center justify-between p-3 rounded-lg border bg-white border-slate-100">
                       <div className="flex items-center gap-3">
@@ -384,7 +384,20 @@ const GrifoWay = () => {
                       </Badge>
                     </div>
 
-                    {/* Item 4: Playbook */}
+                    {/* Item 4: Resolver Restrição PMP */}
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-white border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-slate-100 text-slate-500">
+                          <Shield className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium">Resolver Restrição do PMP</span>
+                      </div>
+                      <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100">
+                        +20 XP
+                      </Badge>
+                    </div>
+
+                    {/* Item 5: Playbook */}
                     <div className="flex items-center justify-between p-3 rounded-lg border bg-white border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-full bg-slate-100 text-slate-500">
@@ -397,7 +410,7 @@ const GrifoWay = () => {
                       </Badge>
                     </div>
 
-                    {/* Item 5: Checklist */}
+                    {/* Item 6: Checklist */}
                     <div className="flex items-center justify-between p-3 rounded-lg border bg-white border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-full bg-slate-100 text-slate-500">
