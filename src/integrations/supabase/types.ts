@@ -1232,6 +1232,7 @@ export type Database = {
           cidade: string | null
           created_at: string | null
           desafios_outro: string | null
+          email_contato: string | null
           estado: string | null
           ferramentas_gestao: string | null
           id: string | null
@@ -1249,6 +1250,7 @@ export type Database = {
           tipos_obras: string[] | null
           tipos_obras_outro: string | null
           user_id: string | null
+          whatsapp_contato: string | null
         }
         Insert: {
           ano_fundacao?: string | null
@@ -1257,6 +1259,7 @@ export type Database = {
           cidade?: string | null
           created_at?: string | null
           desafios_outro?: string | null
+          email_contato?: string | null
           estado?: string | null
           ferramentas_gestao?: string | null
           id?: string | null
@@ -1274,6 +1277,7 @@ export type Database = {
           tipos_obras?: string[] | null
           tipos_obras_outro?: string | null
           user_id?: string | null
+          whatsapp_contato?: string | null
         }
         Update: {
           ano_fundacao?: string | null
@@ -1282,6 +1286,7 @@ export type Database = {
           cidade?: string | null
           created_at?: string | null
           desafios_outro?: string | null
+          email_contato?: string | null
           estado?: string | null
           ferramentas_gestao?: string | null
           id?: string | null
@@ -1299,6 +1304,7 @@ export type Database = {
           tipos_obras?: string[] | null
           tipos_obras_outro?: string | null
           user_id?: string | null
+          whatsapp_contato?: string | null
         }
         Relationships: []
       }
@@ -1313,6 +1319,7 @@ export type Database = {
           created_at: string | null
           diferenciais: string[] | null
           diferenciais_outro: string | null
+          email: string | null
           estado: string | null
           fotos_trabalhos_path: string | null
           id: string | null
@@ -1324,6 +1331,7 @@ export type Database = {
           regioes_atendidas: string[] | null
           selo_grifo: boolean | null
           site: string | null
+          telefone: string | null
           tempo_atuacao: string | null
           ticket_medio: string | null
           tipo_atuacao_outro: string | null
@@ -1340,6 +1348,7 @@ export type Database = {
           created_at?: string | null
           diferenciais?: string[] | null
           diferenciais_outro?: string | null
+          email?: string | null
           estado?: string | null
           fotos_trabalhos_path?: string | null
           id?: string | null
@@ -1351,6 +1360,7 @@ export type Database = {
           regioes_atendidas?: string[] | null
           selo_grifo?: boolean | null
           site?: string | null
+          telefone?: string | null
           tempo_atuacao?: string | null
           ticket_medio?: string | null
           tipo_atuacao_outro?: string | null
@@ -1367,6 +1377,7 @@ export type Database = {
           created_at?: string | null
           diferenciais?: string[] | null
           diferenciais_outro?: string | null
+          email?: string | null
           estado?: string | null
           fotos_trabalhos_path?: string | null
           id?: string | null
@@ -1378,6 +1389,7 @@ export type Database = {
           regioes_atendidas?: string[] | null
           selo_grifo?: boolean | null
           site?: string | null
+          telefone?: string | null
           tempo_atuacao?: string | null
           ticket_medio?: string | null
           tipo_atuacao_outro?: string | null
@@ -1396,6 +1408,7 @@ export type Database = {
           diferenciais: string[] | null
           diferenciais_outro: string | null
           disponibilidade_atual: string | null
+          email: string | null
           equipamentos_proprios: string | null
           especialidades: string[] | null
           especialidades_outro: string | null
@@ -1412,6 +1425,7 @@ export type Database = {
           pretensao_valor: string | null
           regioes_atendidas: string[] | null
           selo_grifo: boolean | null
+          telefone: string | null
           tempo_experiencia: string | null
           user_id: string | null
         }
@@ -1424,6 +1438,7 @@ export type Database = {
           diferenciais?: string[] | null
           diferenciais_outro?: string | null
           disponibilidade_atual?: string | null
+          email?: string | null
           equipamentos_proprios?: string | null
           especialidades?: string[] | null
           especialidades_outro?: string | null
@@ -1440,6 +1455,7 @@ export type Database = {
           pretensao_valor?: string | null
           regioes_atendidas?: string[] | null
           selo_grifo?: boolean | null
+          telefone?: string | null
           tempo_experiencia?: string | null
           user_id?: string | null
         }
@@ -1452,6 +1468,7 @@ export type Database = {
           diferenciais?: string[] | null
           diferenciais_outro?: string | null
           disponibilidade_atual?: string | null
+          email?: string | null
           equipamentos_proprios?: string | null
           especialidades?: string[] | null
           especialidades_outro?: string | null
@@ -1468,6 +1485,7 @@ export type Database = {
           pretensao_valor?: string | null
           regioes_atendidas?: string[] | null
           selo_grifo?: boolean | null
+          telefone?: string | null
           tempo_experiencia?: string | null
           user_id?: string | null
         }
@@ -1491,6 +1509,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ranking_publico: {
+        Row: {
+          current_streak: number | null
+          id: string | null
+          level_current: number | null
+          nome: string | null
+          posicao: number | null
+          xp_total: number | null
+        }
+        Relationships: []
       }
       ranking_users_view: {
         Row: {
