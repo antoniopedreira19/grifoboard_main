@@ -14,12 +14,6 @@ export interface RankingItem extends GamificationProfile {
   position?: number;
 }
 
-// Tipo auxiliar para a view de usuários
-type RankingUserView = {
-  id: string;
-  nome: string | null;
-};
-
 export const gamificationService = {
   // 1. Busca o perfil do usuário atual
   async getProfile(userId: string) {
@@ -35,91 +29,36 @@ export const gamificationService = {
   // 2. Busca o Ranking Global ou por Empresa (Top 20)
   async getRanking(empresaId?: string | null) {
     try {
-      // Para ranking GLOBAL, usar a view pública que mostra todos os usuários
-      if (!empresaId) {
-        const { data: rankingData, error: rankingError } = await supabase
-          .from("ranking_publico" as any)
-          .select("*")
-          .limit(20);
-
-        if (rankingError) {
-          console.error("Erro ao buscar ranking público:", rankingError);
-          throw rankingError;
-        }
-
-        if (!rankingData || rankingData.length === 0) return [];
-
-        const ranking: RankingItem[] = (rankingData as any[]).map((item, index) => ({
-          id: item.id,
-          xp_total: item.xp_total,
-          level_current: item.level_current,
-          current_streak: item.current_streak,
-          nome: item.nome || "Usuário Grifo",
-          role: "Membro FAST",
-          position: item.posicao || index + 1,
-        }));
-
-        return ranking;
-      }
-
-      // Para ranking da EMPRESA, busca usuários específicos
-      const { data: empresaUsers, error: empresaError } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("empresa_id", empresaId);
-
-      if (empresaError) {
-        console.error("Erro ao buscar usuários da empresa:", empresaError);
-        throw empresaError;
-      }
-
-      const userIds = empresaUsers?.map((u) => u.id) || [];
-
-      if (userIds.length === 0) {
-        return [];
-      }
-
-      // Busca perfis de gamificação da empresa
-      const { data: profiles, error: profileError } = await supabase
-        .from("gamification_profiles")
+      // Usar a view ranking_grifoway que já tem todos os dados formatados
+      let query = supabase
+        .from("ranking_grifoway" as any)
         .select("*")
-        .in("id", userIds)
-        .order("xp_total", { ascending: false })
+        .order("posicao_geral", { ascending: true })
         .limit(20);
 
-      if (profileError) {
-        console.error("Erro ao buscar perfis:", profileError);
-        throw profileError;
+      // Se tiver filtro de empresa, filtra por empresa_id
+      if (empresaId) {
+        query = query.eq("empresa_id", empresaId);
       }
 
-      if (!profiles || profiles.length === 0) return [];
+      const { data: rankingData, error: rankingError } = await query;
 
-      const profileIds = profiles.map((p) => p.id);
-
-      // Busca nomes para exibir no ranking
-      const { data: usersData, error: userError } = await supabase
-        .from("ranking_users_view" as any)
-        .select("id, nome")
-        .in("id", profileIds);
-
-      if (userError) {
-        console.error("Erro ao buscar nomes:", userError);
-        throw userError;
+      if (rankingError) {
+        console.error("Erro ao buscar ranking:", rankingError);
+        throw rankingError;
       }
 
-      const users = usersData as unknown as RankingUserView[] | null;
+      if (!rankingData || rankingData.length === 0) return [];
 
-      const ranking: RankingItem[] = profiles.map((profile, index) => {
-        const userDetails = users?.find((u) => u.id === profile.id);
-        const displayName = userDetails?.nome || "Usuário Grifo";
-
-        return {
-          ...profile,
-          nome: displayName,
-          role: "Membro FAST",
-          position: index + 1,
-        };
-      });
+      const ranking: RankingItem[] = (rankingData as any[]).map((item) => ({
+        id: item.user_id,
+        xp_total: item.pontuacao_geral,
+        level_current: Math.floor((item.pontuacao_geral || 0) / 1000) + 1,
+        current_streak: 0,
+        nome: item.nome || "Usuário Grifo",
+        role: "Membro FAST",
+        position: empresaId ? item.posicao_empresa : item.posicao_geral,
+      }));
 
       return ranking;
     } catch (error) {
