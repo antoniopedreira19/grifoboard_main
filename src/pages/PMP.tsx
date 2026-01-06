@@ -97,7 +97,7 @@ const PMP = () => {
   }, []);
 
   const handleSaveAtividade = useCallback(
-    (data: { formData: PmpFormData; restricoesNovas: Restricao[] }) => {
+    (data: { formData: PmpFormData; restricoesNovas: Restricao[]; restricoesParaDeletar: string[] }) => {
       if (!data.formData.titulo) {
         toast({ title: "Título obrigatório", variant: "destructive" });
         return;
@@ -113,6 +113,7 @@ const PMP = () => {
             semana_referencia: semanaRef,
           },
           restricoesNovas: data.restricoesNovas,
+          restricoesParaDeletar: data.restricoesParaDeletar,
           currentMaxOrder: getNextOrder() - 1000,
         },
         {

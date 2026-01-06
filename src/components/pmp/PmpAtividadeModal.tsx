@@ -44,6 +44,7 @@ interface PmpAtividadeModalProps {
   onSave: (data: {
     formData: PmpFormData;
     restricoesNovas: Restricao[];
+    restricoesParaDeletar: string[];
   }) => void;
   onOpenSetorModal: () => void;
   editingId: string | null;
@@ -66,6 +67,7 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
 }: PmpAtividadeModalProps) {
   const [formData, setFormData] = useState<PmpFormData>(initialFormData);
   const [restricoesTemp, setRestricoesTemp] = useState<Restricao[]>(initialRestricoes);
+  const [restricoesDeletadas, setRestricoesDeletadas] = useState<string[]>([]);
   const [novaRestricao, setNovaRestricao] = useState({ descricao: "", data_limite: "" });
 
   // Sincroniza dados quando modal abre com novos dados
@@ -73,6 +75,7 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
     if (isOpen) {
       setFormData(initialFormData);
       setRestricoesTemp(initialRestricoes);
+      setRestricoesDeletadas([]);
       setNovaRestricao({ descricao: "", data_limite: "" });
     }
   }, [isOpen, initialFormData, initialRestricoes]);
@@ -84,6 +87,11 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
   };
 
   const handleRemoveRestricao = (index: number) => {
+    const restricao = restricoesTemp[index];
+    // Se a restrição tem ID, adiciona à lista de deleção
+    if (restricao.id) {
+      setRestricoesDeletadas((prev) => [...prev, restricao.id!]);
+    }
     const newList = [...restricoesTemp];
     newList.splice(index, 1);
     setRestricoesTemp(newList);
@@ -98,6 +106,7 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
     onSave({
       formData,
       restricoesNovas,
+      restricoesParaDeletar: restricoesDeletadas,
     });
   };
 
