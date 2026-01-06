@@ -35,37 +35,57 @@ export const gamificationService = {
   // 2. Busca o Ranking Global ou por Empresa (Top 20)
   async getRanking(empresaId?: string | null) {
     try {
-      let userIds: string[] = [];
+      // Para ranking GLOBAL, usar a view pública que mostra todos os usuários
+      if (!empresaId) {
+        const { data: rankingData, error: rankingError } = await supabase
+          .from("ranking_publico" as any)
+          .select("*")
+          .limit(20);
 
-      // Se tiver empresa_id, busca apenas usuários dessa empresa
-      if (empresaId) {
-        const { data: empresaUsers, error: empresaError } = await supabase
-          .from("usuarios")
-          .select("id")
-          .eq("empresa_id", empresaId);
-
-        if (empresaError) {
-          console.error("Erro ao buscar usuários da empresa:", empresaError);
-          throw empresaError;
+        if (rankingError) {
+          console.error("Erro ao buscar ranking público:", rankingError);
+          throw rankingError;
         }
 
-        userIds = empresaUsers?.map((u) => u.id) || [];
+        if (!rankingData || rankingData.length === 0) return [];
 
-        // Se não encontrou usuários na empresa, retorna lista vazia
-        if (userIds.length === 0) {
-          return [];
-        }
+        const ranking: RankingItem[] = (rankingData as any[]).map((item, index) => ({
+          id: item.id,
+          xp_total: item.xp_total,
+          level_current: item.level_current,
+          current_streak: item.current_streak,
+          nome: item.nome || "Usuário Grifo",
+          role: "Membro FAST",
+          position: item.posicao || index + 1,
+        }));
+
+        return ranking;
       }
 
-      // Busca perfis de gamificação
-      let query = supabase.from("gamification_profiles").select("*").order("xp_total", { ascending: false }).limit(20);
+      // Para ranking da EMPRESA, busca usuários específicos
+      const { data: empresaUsers, error: empresaError } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("empresa_id", empresaId);
 
-      // Se tiver filtro de usuários (por empresa), aplica o filtro
-      if (empresaId && userIds.length > 0) {
-        query = query.in("id", userIds);
+      if (empresaError) {
+        console.error("Erro ao buscar usuários da empresa:", empresaError);
+        throw empresaError;
       }
 
-      const { data: profiles, error: profileError } = await query;
+      const userIds = empresaUsers?.map((u) => u.id) || [];
+
+      if (userIds.length === 0) {
+        return [];
+      }
+
+      // Busca perfis de gamificação da empresa
+      const { data: profiles, error: profileError } = await supabase
+        .from("gamification_profiles")
+        .select("*")
+        .in("id", userIds)
+        .order("xp_total", { ascending: false })
+        .limit(20);
 
       if (profileError) {
         console.error("Erro ao buscar perfis:", profileError);
@@ -77,7 +97,6 @@ export const gamificationService = {
       const profileIds = profiles.map((p) => p.id);
 
       // Busca nomes para exibir no ranking
-      // Usamos 'data: usersData' e fazemos o cast manual logo abaixo
       const { data: usersData, error: userError } = await supabase
         .from("ranking_users_view" as any)
         .select("id, nome")
@@ -88,7 +107,6 @@ export const gamificationService = {
         throw userError;
       }
 
-      // CAST EXPLÍCITO: Força o TypeScript a entender a estrutura
       const users = usersData as unknown as RankingUserView[] | null;
 
       const ranking: RankingItem[] = profiles.map((profile, index) => {
