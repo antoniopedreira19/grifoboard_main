@@ -1,0 +1,4 @@
+project_id = "qacaerwosglbayjfskyx"
+
+[functions.export-pdf]
+verify_jwt = false
