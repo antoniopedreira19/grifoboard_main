@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Plus, AlertTriangle, AlertCircle, CheckCircle2, Calendar, Trash2 } from "lucide-react";
+import { Plus, X, AlertTriangle, AlertCircle, CheckCircle2, Calendar, Trash2, Briefcase, Users, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -14,12 +15,11 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import type { PmpFormData, Restricao, ColorKey } from "@/types/pmp";
 import { safeFormatDate, isDateOverdue } from "@/utils/pmpDateUtils";
+import { cn } from "@/lib/utils";
 
 const COLOR_BG_MAP_LOCAL: Record<string, string> = {
   yellow: "bg-yellow-400",
@@ -104,96 +104,134 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
   const pendingCount = restricoesTemp.filter((r) => !r.resolvido).length;
   const resolvedCount = restricoesTemp.filter((r) => r.resolvido).length;
 
+  const isFormValid = formData.titulo.trim() !== "";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            {editingId ? "Editar" : "Nova"} Atividade
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="grid gap-5 py-4">
-          {/* Título */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Título</Label>
-            <Input
-              placeholder="O que será feito?"
-              value={formData.titulo}
-              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className="h-11"
-            />
-          </div>
-
-          {/* Datas */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Início</Label>
-              <Input
-                type="date"
-                value={formData.data_inicio}
-                onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
-                className="h-11"
-              />
+      <DialogContent className="sm:max-w-[650px] p-0 gap-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-slate-100 bg-white sticky top-0 z-10 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-full">
+              <Plus className="h-5 w-5 text-primary" />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Término</Label>
-              <Input
-                type="date"
-                value={formData.data_termino}
-                onChange={(e) => setFormData({ ...formData, data_termino: e.target.value })}
-                className="h-11"
-              />
+            <div>
+              <DialogTitle className="text-xl font-heading font-bold text-primary">
+                {editingId ? "Editar" : "Nova"} Atividade
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {editingId ? "Atualize os dados da atividade" : "Adicione uma nova atividade ao PMP"}
+              </p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {/* Responsável e Setor */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Responsável</Label>
-              <Input
-                placeholder="Nome"
-                value={formData.responsavel}
-                onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
-                className="h-11"
-              />
+        {/* Body com Scroll */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
+          {/* Seção 1: O que será feito? */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-secondary" />
+              <h3 className="text-sm font-bold text-slate-700 uppercase">O que será feito?</h3>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Setor</Label>
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-xs text-primary"
-                  onClick={onOpenSetorModal}
-                >
-                  Novo
-                </Button>
+
+            <div className="grid gap-4 bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-500">
+                  Título <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="resize-none border-slate-200 focus:border-secondary min-h-[70px]"
+                  placeholder="Descreva a atividade..."
+                />
               </div>
-              <Select
-                value={formData.setor}
-                onValueChange={(value) => setFormData({ ...formData, setor: value })}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setores.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-500">Setor</Label>
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 text-xs text-primary"
+                      onClick={onOpenSetorModal}
+                    >
+                      Novo
+                    </Button>
+                  </div>
+                  <Select
+                    value={formData.setor}
+                    onValueChange={(value) => setFormData({ ...formData, setor: value })}
+                  >
+                    <SelectTrigger className="border-slate-200 bg-white">
+                      <SelectValue placeholder="Selecione o Setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {setores.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-500">Responsável</Label>
+                  <Input
+                    placeholder="Nome do responsável"
+                    value={formData.responsavel}
+                    onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
+                    className="border-slate-200 bg-white"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Restrições */}
-          <div className="space-y-3 border-t pt-5 mt-1">
+          {/* Seção 2: Quando? */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-secondary" />
+              <h3 className="text-sm font-bold text-slate-700 uppercase">Quando?</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-500">Data de Início</Label>
+                <Input
+                  type="date"
+                  value={formData.data_inicio}
+                  onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
+                  className="border-slate-200 bg-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-500">Data de Término</Label>
+                <Input
+                  type="date"
+                  value={formData.data_termino}
+                  onChange={(e) => setFormData({ ...formData, data_termino: e.target.value })}
+                  className="border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Seção 3: Restrições */}
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2 text-sm font-medium">
+              <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Restrições
-              </Label>
+                <h3 className="text-sm font-bold text-slate-700 uppercase">Restrições</h3>
+              </div>
               {restricoesTemp.length > 0 && (
                 <div className="flex gap-2">
                   {pendingCount > 0 && (
@@ -210,149 +248,160 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
               )}
             </div>
 
-            {/* Input para nova restrição */}
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <Input
-                  placeholder="Descrição da restrição"
-                  value={novaRestricao.descricao}
-                  onChange={(e) =>
-                    setNovaRestricao({ ...novaRestricao, descricao: e.target.value })
-                  }
-                  className="h-10"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && novaRestricao.descricao && novaRestricao.data_limite) {
-                      e.preventDefault();
-                      handleAddRestricao();
+            <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm space-y-4">
+              {/* Input para nova restrição */}
+              <div className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Descrição da restrição"
+                    value={novaRestricao.descricao}
+                    onChange={(e) =>
+                      setNovaRestricao({ ...novaRestricao, descricao: e.target.value })
                     }
-                  }}
-                />
+                    className="border-slate-200 bg-white"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && novaRestricao.descricao && novaRestricao.data_limite) {
+                        e.preventDefault();
+                        handleAddRestricao();
+                      }
+                    }}
+                  />
+                </div>
+                <div className="w-[150px]">
+                  <Input
+                    type="date"
+                    value={novaRestricao.data_limite}
+                    onChange={(e) =>
+                      setNovaRestricao({ ...novaRestricao, data_limite: e.target.value })
+                    }
+                    className="border-slate-200 bg-white"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleAddRestricao}
+                  size="icon"
+                  className="shrink-0"
+                  disabled={!novaRestricao.descricao || !novaRestricao.data_limite}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="w-[150px]">
-                <Input
-                  type="date"
-                  value={novaRestricao.data_limite}
-                  onChange={(e) =>
-                    setNovaRestricao({ ...novaRestricao, data_limite: e.target.value })
-                  }
-                  className="h-10"
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={handleAddRestricao}
-                size="icon"
-                className="h-10 w-10 shrink-0"
-                disabled={!novaRestricao.descricao || !novaRestricao.data_limite}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
 
-            {/* Lista de restrições */}
-            {restricoesTemp.length > 0 && (
-              <div className="space-y-2 mt-3">
-                {restricoesTemp.map((rest, index) => {
-                  const isOverdue = !rest.resolvido && isDateOverdue(rest.data_limite);
-                  
-                  return (
-                    <div
-                      key={rest.id || `temp-${index}`}
-                      className={`
-                        flex items-center gap-3 p-3 rounded-lg border transition-all
-                        ${rest.resolvido 
-                          ? "bg-green-50/50 border-green-200" 
-                          : isOverdue 
-                            ? "bg-red-50/50 border-red-200" 
-                            : "bg-amber-50/50 border-amber-200"
-                        }
-                      `}
-                    >
-                      {/* Ícone de status */}
-                      <div className="flex-shrink-0">
-                        {rest.resolvido ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : isOverdue ? (
-                          <AlertCircle className="h-5 w-5 text-red-600" />
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-amber-600" />
+              {/* Lista de restrições */}
+              {restricoesTemp.length > 0 ? (
+                <div className="space-y-2">
+                  {restricoesTemp.map((rest, index) => {
+                    const isOverdue = !rest.resolvido && isDateOverdue(rest.data_limite);
+                    
+                    return (
+                      <div
+                        key={rest.id || `temp-${index}`}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border transition-all",
+                          rest.resolvido 
+                            ? "bg-green-50/50 border-green-200" 
+                            : isOverdue 
+                              ? "bg-red-50/50 border-red-200" 
+                              : "bg-amber-50/50 border-amber-200"
                         )}
-                      </div>
-
-                      {/* Conteúdo */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium leading-tight ${
-                          rest.resolvido ? "text-green-700 line-through" : isOverdue ? "text-red-700" : "text-slate-700"
-                        }`}>
-                          {rest.descricao}
-                        </p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Calendar className="h-3 w-3 text-slate-400" />
-                          <span className={`text-xs ${
-                            isOverdue && !rest.resolvido ? "text-red-600 font-semibold" : "text-slate-500"
-                          }`}>
-                            {safeFormatDate(rest.data_limite, "dd/MM/yyyy", "-")}
-                          </span>
-                          {isOverdue && !rest.resolvido && (
-                            <Badge variant="destructive" className="text-[10px] h-4 ml-1">
-                              Atrasada
-                            </Badge>
+                      >
+                        {/* Ícone de status */}
+                        <div className="flex-shrink-0">
+                          {rest.resolvido ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : isOverdue ? (
+                            <AlertCircle className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-amber-600" />
                           )}
                         </div>
+
+                        {/* Conteúdo */}
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-sm font-medium leading-tight",
+                            rest.resolvido ? "text-green-700 line-through" : isOverdue ? "text-red-700" : "text-slate-700"
+                          )}>
+                            {rest.descricao}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Calendar className="h-3 w-3 text-slate-400" />
+                            <span className={cn(
+                              "text-xs",
+                              isOverdue && !rest.resolvido ? "text-red-600 font-semibold" : "text-slate-500"
+                            )}>
+                              {safeFormatDate(rest.data_limite, "dd/MM/yyyy", "-")}
+                            </span>
+                            {isOverdue && !rest.resolvido && (
+                              <Badge variant="destructive" className="text-[10px] h-4 ml-1">
+                                Atrasada
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Botão remover */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
+                          onClick={() => handleRemoveRestricao(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      {/* Botão remover */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
-                        onClick={() => handleRemoveRestricao(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Empty state */}
-            {restricoesTemp.length === 0 && (
-              <div className="text-center py-4 text-sm text-slate-400">
-                Nenhuma restrição cadastrada
-              </div>
-            )}
-          </div>
-
-          {/* Cor do Card */}
-          <div className="space-y-3 pt-2">
-            <Label className="text-sm font-medium">Cor do Card</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_KEYS.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setFormData({ ...formData, cor: key as ColorKey })}
-                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 ${
-                    COLOR_BG_MAP_LOCAL[key]
-                  } ${
-                    formData.cor === key
-                      ? "border-slate-700 scale-110 ring-2 ring-offset-2 ring-slate-300"
-                      : "border-transparent"
-                  }`}
-                />
-              ))}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-sm text-slate-400">
+                  Nenhuma restrição cadastrada
+                </div>
+              )}
             </div>
-          </div>
+          </section>
+
+          {/* Seção 4: Cor do Card */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-secondary" />
+              <h3 className="text-sm font-bold text-slate-700 uppercase">Cor do Card</h3>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm">
+              <div className="flex flex-wrap gap-3">
+                {COLOR_KEYS.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => setFormData({ ...formData, cor: key as ColorKey })}
+                    className={cn(
+                      "w-10 h-10 rounded-full border-2 transition-all duration-200 hover:scale-110",
+                      COLOR_BG_MAP_LOCAL[key],
+                      formData.cor === key
+                        ? "border-slate-700 scale-110 ring-2 ring-offset-2 ring-slate-300 shadow-md"
+                        : "border-transparent"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
 
-        <DialogFooter>
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-100 bg-white sticky bottom-0 z-10 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || !formData.titulo}>
-            {isSaving ? "Salvando..." : "Salvar"}
+          <Button
+            onClick={handleSave}
+            disabled={!isFormValid || isSaving}
+            className="bg-primary hover:bg-primary/90 min-w-[140px]"
+          >
+            {isSaving ? "Salvando..." : editingId ? "Salvar Alterações" : "Criar Atividade"}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
