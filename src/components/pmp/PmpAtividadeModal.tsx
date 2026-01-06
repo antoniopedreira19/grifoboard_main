@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Plus, X, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, AlertTriangle, AlertCircle, CheckCircle2, Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { PmpFormData, Restricao, ColorKey, COLOR_BG_MAP } from "@/types/pmp";
-import { safeFormatDate } from "@/utils/pmpDateUtils";
+import type { PmpFormData, Restricao, ColorKey } from "@/types/pmp";
+import { safeFormatDate, isDateOverdue } from "@/utils/pmpDateUtils";
 
 const COLOR_BG_MAP_LOCAL: Record<string, string> = {
   yellow: "bg-yellow-400",
@@ -100,60 +101,69 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
     });
   };
 
+  const pendingCount = restricoesTemp.filter((r) => !r.resolvido).length;
+  const resolvedCount = restricoesTemp.filter((r) => r.resolvido).length;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editingId ? "Editar" : "Nova"} Atividade</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            {editingId ? "Editar" : "Nova"} Atividade
+          </DialogTitle>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-5 py-4">
           {/* Título */}
-          <div className="space-y-1">
-            <Label>Título</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Título</Label>
             <Input
               placeholder="O que será feito?"
               value={formData.titulo}
               onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+              className="h-11"
             />
           </div>
 
           {/* Datas */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>Início</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Início</Label>
               <Input
                 type="date"
                 value={formData.data_inicio}
                 onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
+                className="h-11"
               />
             </div>
-            <div className="space-y-1">
-              <Label>Término</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Término</Label>
               <Input
                 type="date"
                 value={formData.data_termino}
                 onChange={(e) => setFormData({ ...formData, data_termino: e.target.value })}
+                className="h-11"
               />
             </div>
           </div>
 
           {/* Responsável e Setor */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>Responsável</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Responsável</Label>
               <Input
                 placeholder="Nome"
                 value={formData.responsavel}
                 onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
+                className="h-11"
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Setor</Label>
+                <Label className="text-sm font-medium">Setor</Label>
                 <Button
                   variant="link"
-                  className="h-4 p-0 text-xs"
+                  className="h-auto p-0 text-xs text-primary"
                   onClick={onOpenSetorModal}
                 >
                   Novo
@@ -163,7 +173,7 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
                 value={formData.setor}
                 onValueChange={(value) => setFormData({ ...formData, setor: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -178,90 +188,155 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
           </div>
 
           {/* Restrições */}
-          <div className="space-y-2 border-t pt-4 mt-2">
-            <Label className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Restrições (Lookahead)
-            </Label>
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 space-y-1">
+          <div className="space-y-3 border-t pt-5 mt-1">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Restrições
+              </Label>
+              {restricoesTemp.length > 0 && (
+                <div className="flex gap-2">
+                  {pendingCount > 0 && (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                      {pendingCount} pendente{pendingCount > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                  {resolvedCount > 0 && (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      {resolvedCount} resolvida{resolvedCount > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Input para nova restrição */}
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
                 <Input
-                  placeholder="Descrição da restrição (ex: Falta material)"
+                  placeholder="Descrição da restrição"
                   value={novaRestricao.descricao}
                   onChange={(e) =>
                     setNovaRestricao({ ...novaRestricao, descricao: e.target.value })
                   }
-                  className="text-sm"
+                  className="h-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && novaRestricao.descricao && novaRestricao.data_limite) {
+                      e.preventDefault();
+                      handleAddRestricao();
+                    }
+                  }}
                 />
               </div>
-              <div className="w-[140px] space-y-1">
+              <div className="w-[150px]">
                 <Input
                   type="date"
                   value={novaRestricao.data_limite}
                   onChange={(e) =>
                     setNovaRestricao({ ...novaRestricao, data_limite: e.target.value })
                   }
-                  className="text-sm"
+                  className="h-10"
                 />
               </div>
               <Button
                 type="button"
                 onClick={handleAddRestricao}
                 size="icon"
-                className="shrink-0"
+                className="h-10 w-10 shrink-0"
+                disabled={!novaRestricao.descricao || !novaRestricao.data_limite}
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
 
+            {/* Lista de restrições */}
             {restricoesTemp.length > 0 && (
-              <div className="bg-slate-50 rounded-md border border-slate-100 p-2 space-y-1 mt-2">
-                {restricoesTemp.map((rest, index) => (
-                  <div
-                    key={rest.id || `temp-${index}`}
-                    className="flex items-center justify-between text-sm bg-white p-2 rounded border border-slate-100 shadow-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      {rest.resolvido ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-amber-500" />
-                      )}
-                      <span className={rest.resolvido ? "line-through text-slate-400" : ""}>
-                        {rest.descricao}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">
-                        {safeFormatDate(rest.data_limite, "dd/MM", "-")}
-                      </span>
+              <div className="space-y-2 mt-3">
+                {restricoesTemp.map((rest, index) => {
+                  const isOverdue = !rest.resolvido && isDateOverdue(rest.data_limite);
+                  
+                  return (
+                    <div
+                      key={rest.id || `temp-${index}`}
+                      className={`
+                        flex items-center gap-3 p-3 rounded-lg border transition-all
+                        ${rest.resolvido 
+                          ? "bg-green-50/50 border-green-200" 
+                          : isOverdue 
+                            ? "bg-red-50/50 border-red-200" 
+                            : "bg-amber-50/50 border-amber-200"
+                        }
+                      `}
+                    >
+                      {/* Ícone de status */}
+                      <div className="flex-shrink-0">
+                        {rest.resolvido ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        ) : isOverdue ? (
+                          <AlertCircle className="h-5 w-5 text-red-600" />
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-amber-600" />
+                        )}
+                      </div>
+
+                      {/* Conteúdo */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium leading-tight ${
+                          rest.resolvido ? "text-green-700 line-through" : isOverdue ? "text-red-700" : "text-slate-700"
+                        }`}>
+                          {rest.descricao}
+                        </p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Calendar className="h-3 w-3 text-slate-400" />
+                          <span className={`text-xs ${
+                            isOverdue && !rest.resolvido ? "text-red-600 font-semibold" : "text-slate-500"
+                          }`}>
+                            {safeFormatDate(rest.data_limite, "dd/MM/yyyy", "-")}
+                          </span>
+                          {isOverdue && !rest.resolvido && (
+                            <Badge variant="destructive" className="text-[10px] h-4 ml-1">
+                              Atrasada
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botão remover */}
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-400 hover:text-red-600"
+                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
                         onClick={() => handleRemoveRestricao(index)}
                       >
-                        <X className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {restricoesTemp.length === 0 && (
+              <div className="text-center py-4 text-sm text-slate-400">
+                Nenhuma restrição cadastrada
               </div>
             )}
           </div>
 
           {/* Cor do Card */}
-          <div className="space-y-2 pt-2">
-            <Label>Cor do Card</Label>
+          <div className="space-y-3 pt-2">
+            <Label className="text-sm font-medium">Cor do Card</Label>
             <div className="flex flex-wrap gap-2">
               {COLOR_KEYS.map((key) => (
                 <button
                   key={key}
                   onClick={() => setFormData({ ...formData, cor: key as ColorKey })}
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 ${
                     COLOR_BG_MAP_LOCAL[key]
                   } ${
                     formData.cor === key
-                      ? "border-slate-600 scale-110 ring-2"
+                      ? "border-slate-700 scale-110 ring-2 ring-offset-2 ring-slate-300"
                       : "border-transparent"
                   }`}
                 />
@@ -271,6 +346,9 @@ export const PmpAtividadeModal = React.memo(function PmpAtividadeModal({
         </div>
 
         <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button onClick={handleSave} disabled={isSaving || !formData.titulo}>
             {isSaving ? "Salvando..." : "Salvar"}
           </Button>
