@@ -33,6 +33,7 @@ import { Obra } from "./types/supabase";
 import CustomSidebar from "@/components/CustomSidebar";
 import MasterAdminSidebar from "@/components/MasterAdminSidebar";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
+import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -183,6 +184,7 @@ function App() {
           />
         </Routes>
         <Toaster />
+        <PWAUpdatePrompt />
       </Router>
     </QueryClientProvider>
   );
