@@ -158,9 +158,9 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   );
 
   return (
-    <div className="w-full border border-slate-200 rounded-xl bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col">
+    <div className="w-full border border-slate-200 rounded-xl bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col h-[600px]">
       {/* Barra de filtros */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Filter className="h-4 w-4" />
           <span className="font-medium">Filtrar:</span>
@@ -191,84 +191,87 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
         )}
       </div>
 
-      {/* Kanban */}
-      <div className="h-[520px] flex-1 overflow-hidden">
+      {/* Kanban Container */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <ScrollArea className="w-full h-full bg-slate-50/30">
-          <div className="flex flex-col h-full min-w-max">
-            {/* Headers fixos das semanas */}
-            <div className="flex p-4 pb-2 gap-4 sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm">
-              {weeks.map((week) => (
-                <div
-                  key={`header-${week.id}`}
-                  className="flex-shrink-0 w-[280px]"
-                >
-                  <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-semibold text-slate-800 text-sm uppercase">
-                        {week.label}
-                      </span>
-                      <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">
-                        {week.year}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 font-medium capitalize">
-                      {week.formattedRange}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Corpo das colunas com cards */}
-            <div className="flex px-4 pb-4 gap-4 flex-1">
-              {weeks.map((week) => {
-                const weekTasks = getTasksForWeek(week.id);
-                return (
+        <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/30">
+          {/* Wrapper com scroll horizontal */}
+          <ScrollArea className="flex-1 w-full">
+            <div className="min-w-max">
+              {/* Headers fixos das semanas */}
+              <div className="flex p-4 pb-2 gap-4 sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm border-b border-slate-100">
+                {weeks.map((week) => (
                   <div
-                    key={week.id}
-                    className="flex-shrink-0 w-[280px] flex flex-col h-full"
+                    key={`header-${week.id}`}
+                    className="flex-shrink-0 w-[280px]"
                   >
-                    {/* Corpo da Coluna */}
-                    <div className="bg-slate-100/50 rounded-lg border border-dashed border-slate-200 flex-1 flex flex-col min-h-[400px] overflow-hidden relative">
-                      <div className="flex-1 overflow-y-auto p-2 pb-14">
-                        <PmpKanbanColumn weekId={week.id} tasks={weekTasks}>
-                          {weekTasks.map((atividade) => (
-                            <PmpKanbanCard
-                              key={`${atividade.id}::${week.id}`}
-                              weekId={week.id}
-                              atividade={atividade}
-                              onDelete={onDelete}
-                              onClick={onOpenEdit}
-                              onToggleCheck={onToggleCheck}
-                            />
-                          ))}
-                        </PmpKanbanColumn>
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-slate-800 text-sm uppercase">
+                          {week.label}
+                        </span>
+                        <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">
+                          {week.year}
+                        </span>
                       </div>
-
-                      {/* Botão Adicionar */}
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-100 via-slate-100 to-transparent pt-4">
-                        <Button
-                          variant="ghost"
-                          className="w-full bg-white hover:bg-white/80 shadow-sm border border-slate-200 text-slate-600 text-xs h-8"
-                          onClick={() => onOpenAdd(week.id)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" /> Adicionar
-                        </Button>
+                      <div className="text-xs text-slate-500 font-medium capitalize">
+                        {week.formattedRange}
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              {/* Corpo das colunas com cards */}
+              <div className="flex px-4 pb-4 pt-2 gap-4">
+                {weeks.map((week) => {
+                  const weekTasks = getTasksForWeek(week.id);
+                  return (
+                    <div
+                      key={week.id}
+                      className="flex-shrink-0 w-[280px] flex flex-col"
+                    >
+                      {/* Corpo da Coluna */}
+                      <div className="bg-slate-100/50 rounded-lg border border-dashed border-slate-200 flex flex-col min-h-[380px] relative">
+                        <div className="p-2 pb-14 space-y-2">
+                          <PmpKanbanColumn weekId={week.id} tasks={weekTasks}>
+                            {weekTasks.map((atividade) => (
+                              <PmpKanbanCard
+                                key={`${atividade.id}::${week.id}`}
+                                weekId={week.id}
+                                atividade={atividade}
+                                onDelete={onDelete}
+                                onClick={onOpenEdit}
+                                onToggleCheck={onToggleCheck}
+                              />
+                            ))}
+                          </PmpKanbanColumn>
+                        </div>
+
+                        {/* Botão Adicionar */}
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-100 via-slate-100 to-transparent pt-4">
+                          <Button
+                            variant="ghost"
+                            className="w-full bg-white hover:bg-white/80 shadow-sm border border-slate-200 text-slate-600 text-xs h-8"
+                            onClick={() => onOpenAdd(week.id)}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-          <ScrollBar orientation="horizontal" className="h-3" />
-        </ScrollArea>
+            <ScrollBar orientation="horizontal" className="h-3" />
+            <ScrollBar orientation="vertical" />
+          </ScrollArea>
+        </div>
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeDragItem ? (
@@ -276,7 +279,6 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
-      </div>
     </div>
   );
 });
