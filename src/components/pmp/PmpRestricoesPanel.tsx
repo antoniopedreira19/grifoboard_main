@@ -1,9 +1,18 @@
-import React, { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { AlertTriangle, Search, Calendar, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -28,12 +37,54 @@ export const PmpRestricoesPanel = React.memo(function PmpRestricoesPanel({
   onResolve,
 }: PmpRestricoesPanelProps) {
   const [showResolved, setShowResolved] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState<string>("all");
 
-  const filteredRestricoes = showResolved
-    ? restricoes
-    : restricoes.filter((r) => !r.resolvido);
+  // Extrai semanas únicas das restrições
+  const uniqueWeeks = useMemo(() => {
+    const weeks = new Set<string>();
+    restricoes.forEach((r) => {
+      if (r.semana) {
+        weeks.add(r.semana);
+      }
+    });
+    return Array.from(weeks).sort();
+  }, [restricoes]);
+
+  // Filtra as restrições
+  const filteredRestricoes = useMemo(() => {
+    return restricoes.filter((r) => {
+      // Filtro de resolvidas
+      if (!showResolved && r.resolvido) {
+        return false;
+      }
+
+      // Filtro por semana
+      if (selectedWeek !== "all" && r.semana !== selectedWeek) {
+        return false;
+      }
+
+      // Filtro por busca (atividade ou descrição)
+      if (searchTerm.trim()) {
+        const search = searchTerm.toLowerCase();
+        const matchesAtividade = r.atividadeTitulo?.toLowerCase().includes(search);
+        const matchesDescricao = r.descricao?.toLowerCase().includes(search);
+        if (!matchesAtividade && !matchesDescricao) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [restricoes, showResolved, selectedWeek, searchTerm]);
 
   const pendingCount = restricoes.filter((r) => !r.resolvido).length;
+  const hasActiveFilters = searchTerm.trim() !== "" || selectedWeek !== "all";
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedWeek("all");
+  };
 
   if (isLoading) {
     return (
@@ -53,6 +104,7 @@ export const PmpRestricoesPanel = React.memo(function PmpRestricoesPanel({
 
   return (
     <div className="w-full border border-slate-200 rounded-xl bg-white shadow-sm p-6 flex flex-col">
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -78,6 +130,59 @@ export const PmpRestricoesPanel = React.memo(function PmpRestricoesPanel({
         </div>
       </div>
 
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        {/* Busca por atividade */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Buscar por atividade ou descrição..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 bg-white"
+          />
+        </div>
+
+        {/* Filtro por semana */}
+        <div className="w-full sm:w-[200px]">
+          <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+            <SelectTrigger className="h-9 bg-white">
+              <Calendar className="h-4 w-4 mr-2 text-slate-400" />
+              <SelectValue placeholder="Filtrar por semana" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="all">Todas as semanas</SelectItem>
+              {uniqueWeeks.map((week) => (
+                <SelectItem key={week} value={week}>
+                  {safeFormatDate(week, "dd/MM/yyyy", week)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Limpar filtros */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-9 text-slate-500 hover:text-slate-700"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Limpar
+          </Button>
+        )}
+      </div>
+
+      {/* Contador de resultados filtrados */}
+      {hasActiveFilters && (
+        <div className="text-xs text-slate-500 mb-2">
+          Mostrando {filteredRestricoes.length} de {showResolved ? restricoes.length : pendingCount} restrições
+        </div>
+      )}
+
+      {/* Tabela */}
       <div className="rounded-lg border border-slate-100 overflow-hidden">
         <Table>
           <TableHeader className="bg-slate-50">
@@ -94,12 +199,14 @@ export const PmpRestricoesPanel = React.memo(function PmpRestricoesPanel({
             {filteredRestricoes.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                  Nenhuma restrição encontrada.
+                  {hasActiveFilters 
+                    ? "Nenhuma restrição encontrada com os filtros aplicados."
+                    : "Nenhuma restrição encontrada."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
               filteredRestricoes.map((restricao, index) => {
-                // Usar um ID único composto se o ID da restrição não existir
                 const uniqueKey = restricao.id || `${restricao.atividadeId}-${index}`;
                 const isOverdue = !restricao.resolvido && isDateOverdue(restricao.data_limite);
 
