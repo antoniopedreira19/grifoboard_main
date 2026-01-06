@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { addDays, format } from "date-fns";
 import { usePmpData } from "@/hooks/usePmpData";
@@ -44,7 +44,8 @@ const PMP = () => {
     removePlantaMutation,
   } = usePmpMutations(obraAtiva?.id);
 
-  // Estados do modal
+  // Estados do modal e filtros
+  const [responsavelFilter, setResponsavelFilter] = useState<string>("todos");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSetorModalOpen, setIsSetorModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -187,6 +188,25 @@ const PMP = () => {
     removePlantaMutation.mutate();
   }, [removePlantaMutation]);
 
+  // Lista de responsáveis únicos para o filtro
+  const responsaveisUnicos = useMemo(() => {
+    const set = new Set<string>();
+    atividades.forEach((a) => {
+      if (a.responsavel) set.add(a.responsavel);
+    });
+    return Array.from(set).sort();
+  }, [atividades]);
+
+  // Função de filtro para tarefas por semana
+  const getFilteredTasksForWeek = useCallback(
+    (weekId: string) => {
+      const tasks = getTasksForWeek(weekId);
+      if (responsavelFilter === "todos") return tasks;
+      return tasks.filter((t) => t.responsavel === responsavelFilter);
+    },
+    [getTasksForWeek, responsavelFilter]
+  );
+
   // Early return se não houver obra
   if (!obraAtiva) {
     return <NoObraSelected />;
@@ -204,12 +224,15 @@ const PMP = () => {
       {/* Kanban Board */}
       <PmpKanbanBoard
         weeks={weeks}
-        getTasksForWeek={getTasksForWeek}
+        getTasksForWeek={getFilteredTasksForWeek}
         onOpenAdd={handleOpenAdd}
         onOpenEdit={handleOpenEdit}
         onDelete={handleDelete}
         onToggleCheck={handleToggleCheck}
         onMove={handleMove}
+        responsaveis={responsaveisUnicos}
+        responsavelFilter={responsavelFilter}
+        onResponsavelFilterChange={setResponsavelFilter}
       />
 
       {/* Painel de Restrições */}
