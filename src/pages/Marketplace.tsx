@@ -55,9 +55,10 @@ export default function Marketplace() {
   const fetchMarketplaceData = async () => {
     setLoading(true);
     try {
-      const { data: profs, error: errProfs } = await supabase.from("formulario_profissionais").select("*");
-      const { data: empresas, error: errEmp } = await supabase.from("formulario_empresas").select("*");
-      const { data: fornecedores, error: errForn } = await supabase.from("formulario_fornecedores").select("*");
+      // Usar views seguras que não expõem dados sensíveis (CPF, email, telefone)
+      const { data: profs, error: errProfs } = await supabase.from("marketplace_profissionais").select("*");
+      const { data: empresas, error: errEmp } = await supabase.from("marketplace_empresas").select("*");
+      const { data: fornecedores, error: errForn } = await supabase.from("marketplace_fornecedores").select("*");
 
       if (errProfs || errEmp || errForn) {
         console.error("Erro ao buscar dados:", errProfs, errEmp, errForn);
