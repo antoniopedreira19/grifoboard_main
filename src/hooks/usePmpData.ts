@@ -24,7 +24,7 @@ export const usePmpData = () => {
   const { userSession } = useAuth();
   const obraAtivaContext = userSession?.obraAtiva;
 
-  // Query: Obra Atual
+  // Query: Obra Atual (busca dados frescos do banco, incluindo pmp_planta_url)
   const { data: obraData } = useQuery({
     queryKey: ["obra_atual", obraAtivaContext?.id],
     queryFn: async () => {
@@ -32,11 +32,11 @@ export const usePmpData = () => {
       return pmpService.fetchObra(obraAtivaContext.id);
     },
     enabled: !!obraAtivaContext?.id,
-    initialData: obraAtivaContext as any,
     staleTime: STALE_TIME,
   });
 
-  const obraAtiva = (obraData || obraAtivaContext) as any;
+  // Usa dados do banco se disponível, senão usa contexto como fallback
+  const obraAtiva = obraData || obraAtivaContext;
 
   // Query: Setores
   const { data: setores = [], refetch: refetchSetores } = useQuery({
