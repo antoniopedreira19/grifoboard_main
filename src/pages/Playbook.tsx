@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { playbookService } from "@/services/playbookService";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -44,6 +45,26 @@ const Playbook = () => {
   const [coeficienteSelecionado, setCoeficienteSelecionado] = useState<"1" | "2">("1");
   const [rawItems, setRawItems] = useState<any[]>([]);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [userRole, setUserRole] = useState<string>("member");
+
+  // Verifica a role do usuário
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (userSession?.user?.id) {
+        const { data } = await supabase
+          .from("usuarios")
+          .select("role")
+          .eq("id", userSession.user.id)
+          .single();
+        if (data?.role) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    checkUserRole();
+  }, [userSession?.user?.id]);
+
+  const isAdmin = userRole === "admin" || userRole === "master_admin";
 
   const processItems = (items: any[], coef: number) => {
     let grandTotalMeta = 0;
@@ -301,78 +322,82 @@ const Playbook = () => {
             </div>
 
             <TabsContent value="orcamento" className="space-y-6 animate-in fade-in duration-300">
-              <Card className="border border-slate-200 bg-white shadow-sm">
-                <CardContent className="py-4 px-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Settings2 className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold text-slate-700">Configuração de Coeficientes</h3>
-                  </div>
+              {/* Configuração de Coeficientes - Apenas para Admin */}
+              {isAdmin && (
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardContent className="py-4 px-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Settings2 className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold text-slate-700">Configuração de Coeficientes</h3>
+                    </div>
 
-                  <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
-                    <RadioGroup
-                      value={coeficienteSelecionado}
-                      onValueChange={(value: "1" | "2") => {
-                        setCoeficienteSelecionado(value);
-                        handleCoeficienteChange(value);
-                      }}
-                      className="flex gap-6"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="1" id="coef1" />
-                          <Label htmlFor="coef1" className="text-sm text-slate-600 cursor-pointer">
-                            Coeficiente 1
-                          </Label>
+                    <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
+                      <RadioGroup
+                        value={coeficienteSelecionado}
+                        onValueChange={(value: "1" | "2") => {
+                          setCoeficienteSelecionado(value);
+                          handleCoeficienteChange(value);
+                        }}
+                        className="flex gap-6"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="1" id="coef1" />
+                            <Label htmlFor="coef1" className="text-sm text-slate-600 cursor-pointer">
+                              Coeficiente 1
+                            </Label>
+                          </div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={coeficiente1}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCoeficiente1(val);
+                              if (coeficienteSelecionado === "1") {
+                                handleCoeficienteChange("1", val, coeficiente2);
+                              }
+                            }}
+                            className="w-24 h-8 text-sm"
+                          />
                         </div>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={coeficiente1}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setCoeficiente1(val);
-                            if (coeficienteSelecionado === "1") {
-                              handleCoeficienteChange("1", val, coeficiente2);
-                            }
-                          }}
-                          className="w-24 h-8 text-sm"
-                        />
-                      </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="2" id="coef2" />
-                          <Label htmlFor="coef2" className="text-sm text-slate-600 cursor-pointer">
-                            Coeficiente 2
-                          </Label>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="2" id="coef2" />
+                            <Label htmlFor="coef2" className="text-sm text-slate-600 cursor-pointer">
+                              Coeficiente 2
+                            </Label>
+                          </div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={coeficiente2}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCoeficiente2(val);
+                              if (coeficienteSelecionado === "2") {
+                                handleCoeficienteChange("2", coeficiente1, val);
+                              }
+                            }}
+                            className="w-24 h-8 text-sm"
+                          />
                         </div>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={coeficiente2}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setCoeficiente2(val);
-                            if (coeficienteSelecionado === "2") {
-                              handleCoeficienteChange("2", coeficiente1, val);
-                            }
-                          }}
-                          className="w-24 h-8 text-sm"
-                        />
-                      </div>
-                    </RadioGroup>
+                      </RadioGroup>
 
-                    <Button size="sm" onClick={saveCoeficienteConfig} disabled={isSavingConfig} className="h-8">
-                      {isSavingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Salvar Coeficientes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Button size="sm" onClick={saveCoeficienteConfig} disabled={isSavingConfig} className="h-8">
+                        {isSavingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Salvar Coeficientes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <PlaybookSummary
                 totalOriginal={playbookData.grandTotalOriginal}
                 totalMeta={playbookData.grandTotalMeta}
+                showOriginal={isAdmin}
               />
 
               <div className="space-y-2">
