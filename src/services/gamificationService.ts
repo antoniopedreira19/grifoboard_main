@@ -29,19 +29,12 @@ export const gamificationService = {
   // 2. Busca o Ranking Global ou por Empresa (Top 20)
   async getRanking(empresaId?: string | null) {
     try {
-      // Usar a view ranking_grifoway que já tem todos os dados formatados
-      let query = supabase
-        .from("ranking_grifoway" as any)
-        .select("*")
-        .order("posicao_geral", { ascending: true })
-        .limit(20);
-
-      // Se tiver filtro de empresa, filtra por empresa_id
-      if (empresaId) {
-        query = query.eq("empresa_id", empresaId);
-      }
-
-      const { data: rankingData, error: rankingError } = await query;
+      // Usar a função RPC que permite ver ranking global de todas empresas
+      const { data: rankingData, error: rankingError } = await supabase
+        .rpc("get_grifoway_ranking", {
+          p_empresa_id: empresaId || null,
+          p_limit: 20,
+        });
 
       if (rankingError) {
         console.error("Erro ao buscar ranking:", rankingError);
@@ -50,14 +43,14 @@ export const gamificationService = {
 
       if (!rankingData || rankingData.length === 0) return [];
 
-      const ranking: RankingItem[] = (rankingData as any[]).map((item) => ({
+      const ranking: RankingItem[] = rankingData.map((item: any) => ({
         id: item.user_id,
         xp_total: item.pontuacao_geral,
         level_current: Math.floor((item.pontuacao_geral || 0) / 1000) + 1,
         current_streak: 0,
         nome: item.nome || "Usuário Grifo",
         role: "Membro FAST",
-        position: empresaId ? item.posicao_empresa : item.posicao_geral,
+        position: item.posicao,
       }));
 
       return ranking;
