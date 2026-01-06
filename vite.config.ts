@@ -18,12 +18,13 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg"],
-      // CORREÇÃO AQUI: Aumentando o limite para 5MB
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // ou 5000000
+        // Não usa cache antigo, sempre busca a nova versão
+        skipWaiting: true,
+        clientsClaim: true,
       },
       manifest: {
         name: "GrifoBoard",
