@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, User, RefreshCw, Trash2, Lock, Eye, EyeOff } from "lucide-react";
 
 interface UserSettingsModalProps {
   open: boolean;
@@ -19,6 +19,12 @@ const UserSettingsModal = ({ open, onOpenChange }: UserSettingsModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Pega o nome atual do user_metadata ou da tabela usuarios
   const currentName = userSession?.user?.user_metadata?.full_name || "";
@@ -75,10 +81,61 @@ const UserSettingsModal = ({ open, onOpenChange }: UserSettingsModalProps) => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast({
+        title: "Senha muito curta",
+        description: "A senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Senhas não conferem",
+        description: "A nova senha e a confirmação devem ser iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Senha alterada!",
+        description: "Sua senha foi atualizada com sucesso.",
+      });
+
+      // Limpa os campos e fecha a seção
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordSection(false);
+    } catch (error: any) {
+      console.error("Erro ao alterar senha:", error);
+      toast({
+        title: "Erro ao alterar senha",
+        description: error.message || "Não foi possível alterar a senha.",
+        variant: "destructive",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   // Atualiza o estado quando o modal abre
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
       setDisplayName(userSession?.user?.user_metadata?.full_name || "");
+      setShowPasswordSection(false);
+      setNewPassword("");
+      setConfirmPassword("");
     }
     onOpenChange(isOpen);
   };
@@ -111,6 +168,106 @@ const UserSettingsModal = ({ open, onOpenChange }: UserSettingsModalProps) => {
             <Label>Email</Label>
             <Input value={userSession?.user?.email || ""} disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Seção de Senha */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Alterar Senha
+            </Label>
+            
+            {!showPasswordSection ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowPasswordSection(true)}
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Alterar minha senha
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nova senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={changingPassword}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Digite novamente"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={changingPassword}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowPasswordSection(false);
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    disabled={changingPassword}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleChangePassword}
+                    disabled={changingPassword || !newPassword || !confirmPassword}
+                  >
+                    {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Alterar senha
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator className="my-4" />
