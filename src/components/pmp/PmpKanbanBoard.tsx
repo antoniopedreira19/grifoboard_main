@@ -1,7 +1,14 @@
 import React, { useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { Plus, User, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DndContext,
   DragEndEvent,
@@ -34,6 +41,9 @@ interface PmpKanbanBoardProps {
     data_termino?: string | null;
     ordem?: number;
   }) => void;
+  responsaveis: string[];
+  responsavelFilter: string;
+  onResponsavelFilterChange: (value: string) => void;
 }
 
 const dropAnimation: DropAnimation = {
@@ -50,6 +60,9 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   onDelete,
   onToggleCheck,
   onMove,
+  responsaveis,
+  responsavelFilter,
+  onResponsavelFilterChange,
 }: PmpKanbanBoardProps) {
   const [activeDragItem, setActiveDragItem] = useState<PmpAtividade | null>(null);
 
@@ -145,7 +158,41 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   );
 
   return (
-    <div className="h-[580px] w-full border border-slate-200 rounded-xl bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col">
+    <div className="w-full border border-slate-200 rounded-xl bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col">
+      {/* Barra de filtros */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <Filter className="h-4 w-4" />
+          <span className="font-medium">Filtrar:</span>
+        </div>
+        <Select value={responsavelFilter} onValueChange={onResponsavelFilterChange}>
+          <SelectTrigger className="w-[200px] h-8 text-sm">
+            <User className="h-3.5 w-3.5 mr-2 text-slate-500" />
+            <SelectValue placeholder="Responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os responsáveis</SelectItem>
+            {responsaveis.map((resp) => (
+              <SelectItem key={resp} value={resp}>
+                {resp}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {responsavelFilter !== "todos" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-slate-500 hover:text-slate-700"
+            onClick={() => onResponsavelFilterChange("todos")}
+          >
+            Limpar filtro
+          </Button>
+        )}
+      </div>
+
+      {/* Kanban */}
+      <div className="h-[520px] flex-1 overflow-hidden">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -229,6 +276,7 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
+      </div>
     </div>
   );
 });
