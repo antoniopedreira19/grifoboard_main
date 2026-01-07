@@ -291,66 +291,72 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     
     if (totalMeta === 0) return null;
 
-    const getStatusRowStyle = (status: StatusContratacao) => {
+    const getStatusColor = (status: StatusContratacao) => {
       switch (status) {
-        case "negociado": return "bg-emerald-50/50";
-        case "negociando": return "bg-amber-50/50";
-        case "a_negociar": return "bg-slate-50/50";
-        default: return "";
+        case "negociado": return "text-emerald-700";
+        case "negociando": return "text-amber-700";
+        case "a_negociar": return "text-slate-700";
+        default: return "text-slate-700";
       }
     };
 
     return (
-      <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden mb-4">
-        <Table>
-          <TableHeader className="bg-slate-100">
-            <TableRow>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider">Situação</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Orçado</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Efetivado</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Verba Disponível</TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {summary.map((row) => (
-              <TableRow key={row.status} className={getStatusRowStyle(row.status)}>
-                <TableCell className="font-semibold text-sm">{getStatusLabel(row.status).toUpperCase()}</TableCell>
-                <TableCell className="text-right text-sm font-medium text-[#A47528]">
-                  {formatCurrency(row.valorMeta)}
-                </TableCell>
-                <TableCell className="text-right text-sm text-slate-600">
-                  {row.percentMeta.toFixed(2)}%
-                </TableCell>
-                <TableCell className="text-right text-sm font-medium">
-                  {row.valorContratado > 0 ? formatCurrency(row.valorContratado) : "—"}
-                </TableCell>
-                <TableCell className="text-right text-sm text-slate-600">
-                  {row.valorContratado > 0 ? `${row.percentContratado.toFixed(2)}%` : "—"}
-                </TableCell>
-                <TableCell className="text-right text-sm font-medium text-emerald-700">
-                  {formatCurrency(row.verbaDisponivel)}
-                </TableCell>
-                <TableCell className="text-right text-sm text-slate-600">
-                  {row.percentVerba.toFixed(2)}%
-                </TableCell>
-              </TableRow>
-            ))}
-            {/* Total Row */}
-            <TableRow className="bg-slate-800 text-white font-bold">
-              <TableCell className="font-bold text-sm">TOTAL</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(totalMeta)}</TableCell>
-              <TableCell className="text-right text-sm">100,00%</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(totalContratado)}</TableCell>
-              <TableCell className="text-right text-sm">100,00%</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(totalVerba)}</TableCell>
-              <TableCell className="text-right text-sm">{percentVerbaTotal.toFixed(2)}%</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </Card>
+      <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Resumo Financeiro por Status</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-300">
+                <th className="text-left py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Situação</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Orçado</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[60px]">%</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Efetivado</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[60px]">%</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Verba Disp.</th>
+                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[60px]">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.map((row) => (
+                <tr key={row.status} className="border-b border-slate-200 last:border-0">
+                  <td className={cn("py-2 px-3 font-semibold text-xs", getStatusColor(row.status))}>
+                    {getStatusLabel(row.status).toUpperCase()}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs font-medium text-[#A47528]">
+                    {formatCurrency(row.valorMeta)}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs text-slate-500">
+                    {row.percentMeta.toFixed(2)}%
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs font-medium text-slate-800">
+                    {row.valorContratado > 0 ? formatCurrency(row.valorContratado) : "—"}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs text-slate-500">
+                    {row.valorContratado > 0 ? `${row.percentContratado.toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs font-medium text-emerald-600">
+                    {formatCurrency(row.verbaDisponivel)}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs text-slate-500">
+                    {row.percentVerba.toFixed(2)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-800 rounded-b-lg">
+                <td className="py-2.5 px-3 font-bold text-xs text-white rounded-bl-lg">TOTAL</td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-white">{formatCurrency(totalMeta)}</td>
+                <td className="py-2.5 px-3 text-right text-xs font-medium text-white/80">100,00%</td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-white">{formatCurrency(totalContratado)}</td>
+                <td className="py-2.5 px-3 text-right text-xs font-medium text-white/80">100,00%</td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-white">{formatCurrency(totalVerba)}</td>
+                <td className="py-2.5 px-3 text-right text-xs font-medium text-white/80 rounded-br-lg">{percentVerbaTotal.toFixed(2)}%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
     );
   };
 
