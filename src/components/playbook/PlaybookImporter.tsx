@@ -33,28 +33,23 @@ import { useAuth } from "@/context/AuthContext";
 import { playbookService } from "@/services/playbookService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Interface interna do componente para manipulação do estado (CSV)
 interface PlaybookItem {
   id: number;
   codigo: string;
   descricao: string;
   unidade: string;
   qtd: number;
-  // Novos campos desagregados
   valorMaoDeObra: number;
   valorMateriais: number;
   valorEquipamentos: number;
   valorVerbas: number;
-  // Totais
   precoTotal: number;
-  // Campos calculados (Meta)
   metaMO?: number;
   metaMat?: number;
   metaEquip?: number;
   metaVerb?: number;
   precoTotalMeta?: number;
-
-  nivel: 0 | 1 | 2; // 0=Principal, 1=Subetapa, 2=Item
+  nivel: 0 | 1 | 2;
   isEtapa: boolean;
 }
 
@@ -78,13 +73,14 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
+    // Cabeçalhos exatos conforme a planilha de referência
     const headers = [
       "Código",
       "Descrição",
       "Unidade",
       "Quantidade orçada",
       "Mão de obra",
-      "Materiais & Ferramentas",
+      "Materiais & Ferramentas / EPI e EPC", // Ajustado
       "Equipamentos de Obra",
       "Verbas, Taxas e Impostos",
       "Preço total",
@@ -95,11 +91,11 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       { wch: 15 }, // Código
       { wch: 45 }, // Descrição
       { wch: 10 }, // Unidade
-      { wch: 12 }, // Qtd
+      { wch: 15 }, // Qtd
       { wch: 15 }, // MO
-      { wch: 20 }, // Mat
-      { wch: 15 }, // Equip
-      { wch: 15 }, // Verbas
+      { wch: 35 }, // Mat (Aumentado para caber o título)
+      { wch: 20 }, // Equip
+      { wch: 25 }, // Verbas
       { wch: 15 }, // Total
     ];
 
@@ -116,7 +112,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     }
 
     XLSX.utils.book_append_sheet(wb, ws, "Orçamento Grifo");
-    XLSX.writeFile(wb, "modelo_orcamento_grifo.xlsx");
+    // Nome do arquivo ajustado
+    XLSX.writeFile(wb, "modelo_padrao.xlsx");
 
     toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
   };
@@ -141,7 +138,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
           const valorEquipamentos = row[6] ? Number(row[6]) : 0;
           const valorVerbas = row[7] ? Number(row[7]) : 0;
 
-          // Se coluna 8 (Total) estiver vazia, soma os componentes
           const totalCalculado = valorMaoDeObra + valorMateriais + valorEquipamentos + valorVerbas;
           const precoTotal = row[8] ? Number(row[8]) : totalCalculado;
 
@@ -162,7 +158,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         })
         .filter((item) => item.descricao !== "" || item.codigo !== "");
 
-      // Detecção Automática de Nível baseada no CSV
       const autoDetected = formatted.map((item) => {
         const isHeader = !item.qtd || item.qtd === 0;
         let nivel: 0 | 1 | 2 = 2;
@@ -171,7 +166,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
           const dots = (item.codigo.match(/\./g) || []).length;
           if (dots === 0) nivel = 0;
           else if (dots === 1) nivel = 1;
-          else nivel = 1; // Fallback
+          else nivel = 1;
         } else {
           nivel = 2;
         }
@@ -252,9 +247,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         codigo: item.codigo,
         descricao: item.descricao,
         unidade: item.unidade,
-        qtd: item.qtd, // CORREÇÃO: Usando 'qtd' para compatibilidade com o banco/serviço
+        qtd: item.qtd,
 
-        // Novos campos
         valor_mao_de_obra: item.valorMaoDeObra,
         valor_materiais: item.valorMateriais,
         valor_equipamentos: item.valorEquipamentos,
@@ -264,8 +258,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         is_etapa: item.nivel !== 2,
         nivel: item.nivel,
         ordem: index,
-
-        // Campos legados para garantir compatibilidade se necessário
         preco_unitario: 0,
       }));
 
@@ -276,7 +268,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         coeficiente_selecionado: selectedCoef as "1" | "2",
       };
 
-      // Cast 'as any' para evitar erros de tipagem estrita durante a migração
       await playbookService.savePlaybook(obraId, configToSave, itemsToSave as any);
 
       toast({
@@ -360,7 +351,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                     </div>
                     <div className="text-center space-y-1">
                       <span className="text-lg font-medium text-slate-700">Selecione o arquivo .xlsx</span>
-                      <p className="text-sm text-slate-400">Modelo "TESTE ANTONIO" compatível</p>
+                      <p className="text-sm text-slate-400">Modelo "modelo_padrao.xlsx" compatível</p>
                     </div>
                   </Label>
                   <Input
