@@ -540,15 +540,19 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
       </div>
 
       {/* Footer com totais */}
-      <div className="flex items-center bg-slate-100 border-t-2 border-slate-300 text-sm font-bold">
-        <div className="py-3 px-4 text-slate-700" style={{ width: `${70 + 280 + 60 + 60 + 120 + 120 + 120 + 120}px` }}>
+      <div className="flex items-center bg-slate-100 border-t-2 border-slate-300 text-xs font-bold">
+        <div className="py-3 px-4 text-slate-700 flex-1">
           TOTAL GERAL ({data.length} itens)
         </div>
-        <div className="w-[120px] text-right py-3 px-2 text-slate-900 flex-shrink-0">
-          {formatCurrency(grandTotalOriginal)}
-        </div>
-        <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">
-          {formatCurrency(grandTotalMeta)}
+        <div className="flex items-center gap-6 pr-4">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-slate-500 font-normal">Total Original</span>
+            <span className="text-slate-900">{formatCurrency(grandTotalOriginal)}</span>
+          </div>
+          <div className="flex flex-col items-end px-3 py-1 rounded bg-[#A47528]/10">
+            <span className="text-[10px] text-[#A47528]/70 font-normal">Total Meta</span>
+            <span className="text-[#A47528]">{formatCurrency(grandTotalMeta)}</span>
+          </div>
         </div>
         <div className="w-[70px] flex-shrink-0" />
         {!readOnly && <div className="w-[100px] flex-shrink-0" />}
