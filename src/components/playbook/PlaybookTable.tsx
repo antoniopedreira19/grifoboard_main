@@ -1,346 +1,246 @@
-import { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Search, ListTree, ArrowUpRight } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Edit2, LayoutList, ListTree, Minus, Trash2 } from "lucide-react";
+import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
 import { playbookService } from "@/services/playbookService";
 import { useToast } from "@/hooks/use-toast";
-
-export interface PlaybookItem {
-  id: number | string;
-  descricao: string;
-  unidade: string;
-  qtd: number;
-  precoUnitario: number;
-  precoTotal: number;
-  isEtapa: boolean;
-  nivel?: number;
-  precoUnitarioMeta: number;
-  precoTotalMeta: number;
-  porcentagem: number;
-  destino?: string | null;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface PlaybookTableProps {
   data: PlaybookItem[];
   grandTotalOriginal: number;
   grandTotalMeta: number;
-  onUpdate?: () => void;
+  onUpdate: () => void;
+  onEdit?: (item: PlaybookItem) => void;
+  readOnly?: boolean;
 }
 
-export function PlaybookTable({ data, grandTotalOriginal, grandTotalMeta, onUpdate }: PlaybookTableProps) {
+export function PlaybookTable({
+  data,
+  grandTotalOriginal,
+  grandTotalMeta,
+  onUpdate,
+  onEdit,
+  readOnly = false,
+}: PlaybookTableProps) {
   const { toast } = useToast();
-  const [expandedIds, setExpandedIds] = useState<Record<string | number, boolean>>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
-
-  const toggleRow = (id: number | string) => {
-    setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  const formatCurrency = (val: number | undefined | null) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val || 0);
   };
 
-  const expandAll = () => {
-    const allParents = data
-      .filter((i) => i.nivel === 0 || i.nivel === 1 || i.isEtapa)
-      .reduce(
-        (acc, curr) => ({
-          ...acc,
-          [curr.id]: true,
-        }),
-        {},
-      );
-    setExpandedIds(allParents);
-  };
-
-  const collapseAll = () => setExpandedIds({});
-
-  const handleSetDestination = async (id: number | string, destino: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      await playbookService.updateItem(String(id), { destino: destino === "clean" ? null : destino });
-      toast({
-        description: destino === "clean" ? "Item removido da gestão." : `Item enviado para ${destino}.`,
-        className: "bg-green-50 border-green-200",
-      });
-      if (onUpdate) onUpdate();
-    } catch (e) {
-      toast({ title: "Erro", description: "Não foi possível definir o destino.", variant: "destructive" });
+      await playbookService.deleteItem(id);
+      toast({ title: "Item excluído com sucesso" });
+      onUpdate();
+    } catch (error) {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
     }
   };
 
-  const filteredData = data.filter((item) => item.descricao.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const totalsMap = new Map<number | string, { precoTotal: number; precoTotalMeta: number }>();
-  let currentL0_Id: number | string | null = null;
-  let currentL1_Id: number | string | null = null;
-
-  data.forEach((item) => {
-    const level = item.nivel ?? (item.isEtapa ? 0 : 2);
-    if (level === 0) {
-      currentL0_Id = item.id;
-      currentL1_Id = null;
-      totalsMap.set(item.id, { precoTotal: 0, precoTotalMeta: 0 });
-    } else if (level === 1) {
-      currentL1_Id = item.id;
-      totalsMap.set(item.id, { precoTotal: 0, precoTotalMeta: 0 });
-    } else if (level === 2) {
-      if (currentL1_Id !== null) {
-        const t1 = totalsMap.get(currentL1_Id) || { precoTotal: 0, precoTotalMeta: 0 };
-        totalsMap.set(currentL1_Id, {
-          precoTotal: t1.precoTotal + item.precoTotal,
-          precoTotalMeta: t1.precoTotalMeta + item.precoTotalMeta,
-        });
-      }
-      if (currentL0_Id !== null) {
-        const t0 = totalsMap.get(currentL0_Id) || { precoTotal: 0, precoTotalMeta: 0 };
-        totalsMap.set(currentL0_Id, {
-          precoTotal: t0.precoTotal + item.precoTotal,
-          precoTotalMeta: t0.precoTotalMeta + item.precoTotalMeta,
-        });
-      }
-    }
-  });
-
-  currentL0_Id = null;
-  currentL1_Id = null;
-
-  const rowsToRender = filteredData.map((item) => {
-    const level = item.nivel ?? (item.isEtapa ? 0 : 2);
-    const itemId = item.id;
-    let isVisible = true;
-
-    if (level === 0) {
-      currentL0_Id = itemId;
-      currentL1_Id = null;
-    } else if (level === 1) {
-      currentL1_Id = itemId;
-    }
-
-    if (!searchTerm) {
-      if (level === 1 && currentL0_Id !== null && !expandedIds[currentL0_Id]) isVisible = false;
-      else if (level === 2) {
-        if (currentL0_Id !== null && !expandedIds[currentL0_Id]) isVisible = false;
-        else if (currentL1_Id !== null && !expandedIds[currentL1_Id]) isVisible = false;
-      }
-    }
-
-    const isExpanded = !!expandedIds[itemId];
-    const totals = level === 0 || level === 1 ? totalsMap.get(itemId) : undefined;
-    const valMeta = totals ? totals.precoTotalMeta : item.precoTotalMeta;
-    const displayPercentage = grandTotalMeta > 0 ? (valMeta / grandTotalMeta) * 100 : 0;
-
-    return {
-      ...item,
-      level,
-      visible: isVisible,
-      isExpanded,
-      displayTotal: totals ? totals.precoTotal : item.precoTotal,
-      displayTotalMeta: totals ? totals.precoTotalMeta : item.precoTotalMeta,
-      displayPercentage,
-    };
-  });
+  // Helper para calcular a meta individual (já que não salvamos metaMO no banco, calculamos na hora se necessário,
+  // ou assumimos que 'data' já vem processado do componente pai com esses campos extras)
+  // Como o componente pai (Playbook.tsx) passa items processados, podemos acessar as props dinâmicas se existirem
+  // ou calcular baseada na proporção do total se não.
+  // Para simplificar, vamos assumir que a proporção Meta/Original do item se aplica às partes.
+  const getMetaValue = (originalVal: number, item: any) => {
+    if (!item.precoTotal || item.precoTotal === 0) return 0;
+    const ratio = (item.precoTotalMeta || 0) / item.precoTotal;
+    return originalVal * ratio;
+  };
 
   return (
-    <div className="space-y-4">
-      <style>{`
-        @keyframes soft-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.05); } }
-        .animate-soft-pulse { animation: soft-pulse 3s ease-in-out infinite; }
-      `}</style>
+    <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-slate-50 border-b border-slate-200">
+            <TableRow>
+              <TableHead className="w-[80px] text-center text-xs font-bold text-slate-700">Nível</TableHead>
+              <TableHead className="w-[100px] text-xs font-bold text-slate-700">Código</TableHead>
+              <TableHead className="min-w-[300px] text-xs font-bold text-slate-700">Descrição</TableHead>
+              <TableHead className="w-[60px] text-center text-xs font-bold text-slate-700">Unid.</TableHead>
+              <TableHead className="w-[80px] text-center text-xs font-bold text-slate-700">Qtd.</TableHead>
 
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar item ou etapa..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-white"
-          />
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" onClick={expandAll} className="flex-1 sm:flex-none text-slate-600">
-            Expandir Todos
-          </Button>
-          <Button variant="outline" size="sm" onClick={collapseAll} className="flex-1 sm:flex-none text-slate-600">
-            Recolher Todos
-          </Button>
-        </div>
-      </div>
+              {/* Novas Colunas */}
+              <TableHead className="w-[110px] text-right text-xs font-bold text-blue-700 bg-blue-50/50">
+                Mão de Obra
+              </TableHead>
+              <TableHead className="w-[110px] text-right text-xs font-bold text-orange-700 bg-orange-50/50">
+                Materiais
+              </TableHead>
+              <TableHead className="w-[110px] text-right text-xs font-bold text-yellow-700 bg-yellow-50/50">
+                Equip.
+              </TableHead>
+              <TableHead className="w-[110px] text-right text-xs font-bold text-emerald-700 bg-emerald-50/50">
+                Verbas
+              </TableHead>
 
-      <div className="border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50 border-b border-slate-200">
-              <TableRow>
-                <TableHead className="w-[30%] pl-6">Descrição</TableHead>
-                <TableHead className="text-right w-[60px]">Unid.</TableHead>
-                <TableHead className="text-right w-[60px]">Qtd</TableHead>
-                <TableHead className="text-right">Preço Unit.</TableHead>
-                <TableHead className="text-right">Preço Total</TableHead>
-                <TableHead className="text-right bg-blue-50/50 text-blue-900 border-l border-blue-100">
-                  Unit. Meta
-                </TableHead>
-                <TableHead className="text-right bg-blue-50/50 text-blue-900 font-bold">Total Meta</TableHead>
-                <TableHead className="text-right w-[50px]">%</TableHead>
-                <TableHead className="text-center w-[120px]">Gestão</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rowsToRender
-                .filter((r) => r.visible)
-                .map((item) => (
-                  <TableRow
-                    key={item.id}
-                    className={cn(
-                      item.level === 0
-                        ? "bg-slate-100/80 hover:bg-slate-200/50 border-t-2 border-slate-200 cursor-pointer"
-                        : item.level === 1
-                          ? "bg-blue-50/30 hover:bg-blue-50 border-t border-blue-100 cursor-pointer"
-                          : "hover:bg-slate-50 border-b border-slate-50",
+              <TableHead className="w-[120px] text-right text-xs font-bold text-slate-900 bg-slate-100">
+                Total Orig.
+              </TableHead>
+              <TableHead className="w-[120px] text-right text-xs font-bold text-[#A47528] bg-[#A47528]/10">
+                Total Meta
+              </TableHead>
+              {!readOnly && <TableHead className="w-[80px] text-center text-xs font-bold">Ações</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((item: any) => {
+              // Cast any para acessar propriedades calculadas no frontend (metaMO, etc) se existirem
+              // ou calcular na hora
+              const isParent = item.nivel === 0 || item.nivel === 1;
+
+              return (
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    "hover:bg-slate-50/80 transition-colors",
+                    item.nivel === 0 && "bg-slate-100/50 font-semibold border-t-2 border-slate-200",
+                    item.nivel === 1 && "bg-blue-50/10 text-blue-900",
+                  )}
+                >
+                  <TableCell className="text-center py-2">
+                    {item.nivel === 0 && <Badge className="bg-slate-800 h-5 text-[10px]">NV 0</Badge>}
+                    {item.nivel === 1 && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 h-5 text-[10px]">
+                        NV 1
+                      </Badge>
                     )}
-                    onClick={item.level === 0 || item.level === 1 ? () => toggleRow(item.id) : undefined}
-                  >
-                    <TableCell
-                      className={cn("py-3 relative", item.level === 0 ? "pl-6" : item.level === 1 ? "pl-10" : "pl-14")}
+                    {item.nivel === 2 && (
+                      <Badge variant="outline" className="border-slate-200 text-slate-400 h-5 text-[10px]">
+                        ITEM
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-slate-500 py-2">
+                    {item.codigo || item.proposta}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 text-sm",
+                        item.nivel === 1 && "pl-4",
+                        item.nivel === 2 && "pl-8 text-slate-600",
+                      )}
                     >
-                      <div
-                        className={cn(
-                          "flex items-center gap-2",
-                          item.level === 0
-                            ? "font-bold text-slate-800 uppercase text-sm"
-                            : item.level === 1
-                              ? "font-bold text-blue-900 text-xs uppercase tracking-wide"
-                              : "text-slate-600 capitalize text-sm",
+                      {item.nivel === 0 && <LayoutList className="h-4 w-4 text-slate-700" />}
+                      {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
+                      {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
+                      <span className="truncate max-w-[400px]" title={item.descricao || item.etapa}>
+                        {item.descricao || item.etapa}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center text-xs text-slate-500 py-2">{item.unidade}</TableCell>
+                  <TableCell className="text-center text-xs text-slate-500 py-2">{item.qtd}</TableCell>
+
+                  {/* Colunas de Valor Desagregado */}
+                  <TableCell className="text-right py-2 bg-blue-50/20">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-slate-700">
+                        {formatCurrency(item.valor_mao_de_obra)}
+                      </span>
+                      {item.nivel === 2 && (
+                        <span className="text-[10px] text-blue-600">
+                          {formatCurrency(getMetaValue(item.valor_mao_de_obra, item))}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right py-2 bg-orange-50/20">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
+                      {item.nivel === 2 && (
+                        <span className="text-[10px] text-orange-600">
+                          {formatCurrency(getMetaValue(item.valor_materiais, item))}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right py-2 bg-yellow-50/20">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-slate-700">
+                        {formatCurrency(item.valor_equipamentos)}
+                      </span>
+                      {item.nivel === 2 && (
+                        <span className="text-[10px] text-yellow-600">
+                          {formatCurrency(getMetaValue(item.valor_equipamentos, item))}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right py-2 bg-emerald-50/20">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
+                      {item.nivel === 2 && (
+                        <span className="text-[10px] text-emerald-600">
+                          {formatCurrency(getMetaValue(item.valor_verbas, item))}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Totais */}
+                  <TableCell className="text-right py-2 font-medium text-xs bg-slate-50">
+                    {formatCurrency(item.precoTotal || item.preco_total)}
+                  </TableCell>
+                  <TableCell className="text-right py-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5">
+                    {formatCurrency(item.precoTotalMeta)}
+                  </TableCell>
+
+                  {!readOnly && (
+                    <TableCell className="text-center py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        {onEdit && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(item)}>
+                            <Edit2 className="h-3 w-3 text-slate-400" />
+                          </Button>
                         )}
-                      >
-                        {(item.level === 0 || item.level === 1) && (
-                          <div className="p-1 rounded-md hover:bg-black/5 transition-colors">
-                            {item.isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-slate-500" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-slate-500" />
-                            )}
-                          </div>
-                        )}
-                        {item.level === 1 && <ListTree className="h-3 w-3 text-blue-400 mr-1 opacity-50" />}
-                        {item.level === 2 && <div className="absolute left-8 top-0 bottom-0 w-px bg-slate-200" />}
-                        <span>{item.descricao.toLowerCase()}</span>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-red-600">
+                              <Trash2 className="h-3 w-3 text-slate-400" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir item?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o item do orçamento.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-600">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
-
-                    <TableCell className="text-right text-xs text-slate-500">{item.unidade}</TableCell>
-                    <TableCell className="text-right text-xs text-slate-500">{item.qtd > 0 ? item.qtd : "-"}</TableCell>
-                    <TableCell className="text-right text-xs font-mono text-slate-600">
-                      {item.level === 2 && formatCurrency(item.precoUnitario)}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-slate-600 font-medium">
-                      {formatCurrency(item.displayTotal)}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-blue-600 bg-blue-50/30 border-l border-blue-50">
-                      {item.level === 2 && formatCurrency(item.precoUnitarioMeta)}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-mono font-bold text-blue-700 bg-blue-50/30">
-                      {formatCurrency(item.displayTotalMeta)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.displayPercentage > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "font-mono text-[10px] border transition-all",
-                            item.displayPercentage > 2
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300 animate-soft-pulse font-bold shadow-sm"
-                              : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200",
-                            item.level === 0 && "text-[11px] font-bold",
-                            item.level === 1 && "text-[10px] font-semibold",
-                          )}
-                        >
-                          {item.displayPercentage.toFixed(2)}%
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    {/* Coluna GESTÃO Atualizada: Permite selecionar se >2% OU se já tem destino, independente do nível */}
-                    <TableCell className="text-center p-1">
-                      {item.displayPercentage > 2 || item.destino ? (
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={item.destino || ""}
-                            onValueChange={(val) => handleSetDestination(item.id, val)}
-                          >
-                            <SelectTrigger
-                              className={cn(
-                                "h-7 text-[10px] w-full border-0 shadow-sm transition-all",
-                                item.destino
-                                  ? "bg-blue-100 text-blue-800 font-bold hover:bg-blue-200"
-                                  : "bg-white text-slate-400 hover:bg-slate-50 border border-slate-200",
-                              )}
-                            >
-                              <div className="flex items-center gap-1 justify-center w-full">
-                                {item.destino ? (
-                                  <span>{item.destino}</span>
-                                ) : (
-                                  <>
-                                    <span className="hidden sm:inline">Definir</span>
-                                    <ArrowUpRight className="h-3 w-3 opacity-50" />
-                                  </>
-                                )}
-                              </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Obra">Obra Direta</SelectItem>
-                              <SelectItem value="Fornecimento">Fornecimento</SelectItem>
-                              <SelectItem value="Cliente">Cliente</SelectItem>
-                              {item.destino && (
-                                <>
-                                  <div className="h-px bg-slate-100 my-1" />
-                                  <SelectItem
-                                    value="clean"
-                                    className="text-red-500 focus:text-red-600 focus:bg-red-50 font-medium"
-                                  >
-                                    Remover
-                                  </SelectItem>
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : (
-                        <span className="text-slate-200 text-[10px]">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-              {rowsToRender.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-slate-400">
-                    Nenhum item encontrado.
-                  </TableCell>
+                  )}
                 </TableRow>
-              )}
-            </TableBody>
-            <TableFooter className="bg-slate-800 text-white hover:bg-slate-800 border-t-4 border-yellow-500 sticky bottom-0 z-20 shadow-xl">
-              <TableRow>
-                <TableCell colSpan={4} className="pl-6 font-bold uppercase tracking-wider text-sm py-4">
-                  Total Geral Consolidado
-                </TableCell>
-                <TableCell className="text-right font-bold font-mono text-white text-sm">
-                  {formatCurrency(grandTotalOriginal)}
-                </TableCell>
-                <TableCell className="text-right border-l border-slate-600/50" />
-                <TableCell className="text-right font-bold font-mono text-yellow-400 text-sm">
-                  {formatCurrency(grandTotalMeta)}
-                </TableCell>
-                <TableCell className="text-right font-bold text-xs text-slate-300">100%</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </div>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { PlaybookFarolItem } from "@/types/playbook";
+// CORREÇÃO: Usando PlaybookItem em vez de PlaybookFarolItem
+import { PlaybookItem } from "@/types/playbook";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calculator } from "lucide-react";
 
@@ -22,7 +23,6 @@ const formSchema = z
     quantidade: z.string().min(1, "Quantidade é obrigatória"),
     unidade: z.string().min(1, "Unidade é obrigatória"),
 
-    // Novos campos de composição de custo
     valor_mao_de_obra: z.string().default("0"),
     valor_materiais: z.string().default("0"),
     valor_equipamentos: z.string().default("0"),
@@ -50,8 +50,9 @@ interface PlaybookFormProps {
   onClose: () => void;
   onSuccess: () => void;
   obraId: string;
-  table: "fornecimentos" | "obra"; // Nota: Idealmente migrar para usar apenas 'playbook_items' no futuro
-  editingItem: PlaybookFarolItem | null;
+  table: "fornecimentos" | "obra";
+  // CORREÇÃO: Tipo atualizado
+  editingItem: PlaybookItem | null;
 }
 
 export default function PlaybookForm({ isOpen, onClose, onSuccess, obraId, table, editingItem }: PlaybookFormProps) {
@@ -74,30 +75,28 @@ export default function PlaybookForm({ isOpen, onClose, onSuccess, obraId, table
     },
   });
 
-  // Calcula o total em tempo real para feedback visual
   const watchValues = form.watch(["valor_mao_de_obra", "valor_materiais", "valor_equipamentos", "valor_verbas"]);
   const totalCalculado = watchValues.reduce((acc, val) => acc + (parseFloat(val || "0") || 0), 0);
 
   useEffect(() => {
     if (editingItem) {
-      // Cast seguro assumindo que o editingItem já vem com os campos do banco (após o alter table)
+      // Cast seguro para any para lidar com discrepâncias de nomes de coluna antigos vs novos
       const item = editingItem as any;
 
       form.reset({
         etapa: item.etapa || item.descricao || "",
         proposta: item.proposta || item.codigo || "",
         responsavel: item.responsavel || "",
-        quantidade: String(item.quantidade || item.quantidade_orcada || 0),
+        quantidade: String(item.quantidade || item.qtd || item.quantidade_orcada || 0),
         unidade: item.unidade || "",
 
-        // Mapeando os novos campos (com fallback para 0)
         valor_mao_de_obra: String(item.valor_mao_de_obra || 0),
         valor_materiais: String(item.valor_materiais || 0),
         valor_equipamentos: String(item.valor_equipamentos || 0),
         valor_verbas: String(item.valor_verbas || 0),
 
         valor_contratado: item.valor_contratado ? String(item.valor_contratado) : "",
-        status: item.status || "A Negociar",
+        status: item.status || item.status_contratacao || "A Negociar",
         observacao: item.observacao || "",
       });
     } else {
@@ -120,10 +119,7 @@ export default function PlaybookForm({ isOpen, onClose, onSuccess, obraId, table
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // Determina a tabela correta (compatibilidade com estrutura antiga ou nova)
-      // Se você migrou tudo para playbook_items, pode forçar 'playbook_items' aqui
-      // Por enquanto mantendo a lógica de props, mas enviando os campos novos
-      const tableName = "playbook_items"; // Forçando a tabela nova conforme sua instrução de "alter table playbook_items"
+      const tableName = "playbook_items";
 
       const vMO = parseFloat(values.valor_mao_de_obra || "0");
       const vMat = parseFloat(values.valor_materiais || "0");
@@ -133,44 +129,41 @@ export default function PlaybookForm({ isOpen, onClose, onSuccess, obraId, table
 
       const data = {
         obra_id: obraId,
-        descricao: values.etapa, // Mapeando etapa -> descricao para compatibilidade
-        codigo: values.proposta, // Mapeando proposta -> codigo
+        descricao: values.etapa,
+        codigo: values.proposta,
         responsavel: values.responsavel,
-        quantidade_orcada: parseFloat(values.quantidade), // Mapeando para o nome correto da coluna
+        qtd: parseFloat(values.quantidade), // Correção: usando 'qtd' padrão do banco
         unidade: values.unidade,
 
-        // Novos campos
         valor_mao_de_obra: vMO,
         valor_materiais: vMat,
         valor_equipamentos: vEq,
         valor_verbas: vVb,
-        preco_total: precoTotal, // Total calculado
+        preco_total: precoTotal,
 
         valor_contratado: values.valor_contratado ? parseFloat(values.valor_contratado) : null,
-        status: values.status, // Campo legado ou se existir na tabela nova
-        // observacao: values.observacao || null, // Se existir na tabela nova
-      };
+        status_contratacao: values.status,
+        observacao: values.observacao || null,
 
-      // Nota: Ajuste os nomes das colunas acima se sua tabela `playbook_items` usar nomes diferentes (ex: `etapa` vs `descricao`)
+        // CORREÇÃO: Adicionando campos obrigatórios com defaults
+        ordem: editingItem?.ordem || 0,
+        nivel: editingItem?.nivel || 2,
+        is_etapa: false,
+        preco_unitario: 0, // Legado
+      };
 
       if (editingItem) {
         const { error } = await supabase.from(tableName).update(data).eq("id", editingItem.id);
 
         if (error) throw error;
 
-        toast({
-          title: "Sucesso",
-          description: "Item atualizado com sucesso",
-        });
+        toast({ title: "Sucesso", description: "Item atualizado com sucesso" });
       } else {
         const { error } = await supabase.from(tableName).insert([data]);
 
         if (error) throw error;
 
-        toast({
-          title: "Sucesso",
-          description: "Item adicionado com sucesso",
-        });
+        toast({ title: "Sucesso", description: "Item adicionado com sucesso" });
       }
 
       onSuccess();
@@ -178,12 +171,13 @@ export default function PlaybookForm({ isOpen, onClose, onSuccess, obraId, table
       console.error(error);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Verifique se as colunas existem no banco.",
+        description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
     }
   };
 
+  // ... (o restante do JSX permanece igual, pois já estava com os campos corretos na resposta anterior)
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-50/50">

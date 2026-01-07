@@ -1,223 +1,137 @@
-import { useState } from 'react';
-import { PlaybookFarolItem } from '@/types/playbook';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, X } from 'lucide-react';
-import { capitalizeWords } from '@/lib/utils/textUtils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+// CORREÇÃO: Usando PlaybookItem
+import { PlaybookItem } from "@/types/playbook";
+import { Separator } from "@/components/ui/separator";
+import { Building2, DollarSign, User, Calendar, FileText, HardHat, Hammer, Construction } from "lucide-react";
 
 interface PlaybookDetailsModalProps {
-  item: PlaybookFarolItem | null;
+  item: PlaybookItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit: (item: PlaybookFarolItem) => void;
-  onDelete: (id: string) => void;
 }
 
-const formatCurrency = (value: number | null) => {
-  if (value === null || value === undefined) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Negociadas':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    case 'Em Andamento':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-    case 'A Negociar':
-      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-  }
-};
-
-export default function PlaybookDetailsModal({
-  item,
-  isOpen,
-  onClose,
-  onEdit,
-  onDelete,
-}: PlaybookDetailsModalProps) {
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
+export default function PlaybookDetailsModal({ item, isOpen, onClose }: PlaybookDetailsModalProps) {
   if (!item) return null;
 
-  const orcamentoMetaTotal = item.quantidade * item.orcamento_meta_unitario;
-  const diferenca = orcamentoMetaTotal - (item.valor_contratado || 0);
+  const formatCurrency = (val: number | null | undefined) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val || 0);
 
-  const handleEditClick = () => {
-    onClose();
-    onEdit(item);
-  };
-
-  const handleDeleteClick = () => {
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    onDelete(item.id);
-    setDeleteDialogOpen(false);
-    onClose();
-  };
+  // Cast para any para garantir acesso caso tipagem ainda não tenha atualizado no cache
+  const data = item as any;
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Detalhes do Item</DialogTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEditClick}
-                  title="Editar"
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeleteClick}
-                  title="Excluir"
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* Informações Básicas */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Etapa</label>
-                <p className="text-base mt-1">{capitalizeWords(item.etapa)}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Proposta</label>
-                <p className="text-base mt-1">{capitalizeWords(item.proposta)}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Responsável</label>
-                <p className="text-base mt-1">{capitalizeWords(item.responsavel)}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                <div className="mt-1">
-                  <Badge className={getStatusColor(item.status)} variant="outline">
-                    {item.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* Quantidades */}
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold mb-3">Quantidades</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                  <p className="text-base mt-1">{item.quantidade}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Unidade</label>
-                  <p className="text-base mt-1">{capitalizeWords(item.unidade)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Valores */}
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold mb-3">Valores</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Orçamento Meta Unitário</label>
-                  <p className="text-base mt-1 font-semibold">{formatCurrency(item.orcamento_meta_unitario)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Orçamento Meta Total</label>
-                  <p className="text-base mt-1 font-semibold bg-yellow-50 dark:bg-yellow-950 p-2 rounded">
-                    {formatCurrency(orcamentoMetaTotal)}
-                  </p>
-                </div>
-              </div>
-
-              {item.valor_contratado !== null && (
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Valor Contratado</label>
-                    <p className="text-base mt-1 font-semibold">{formatCurrency(item.valor_contratado)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Diferença</label>
-                    <p
-                      className={`text-base mt-1 font-semibold p-2 rounded ${
-                        diferenca >= 0
-                          ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950'
-                          : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950'
-                      }`}
-                    >
-                      {formatCurrency(diferenca)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Observação */}
-            {item.observacao && (
-              <div className="border-t pt-4">
-                <label className="text-sm font-medium text-muted-foreground">Observação</label>
-                <p className="text-base mt-1">{capitalizeWords(item.observacao)}</p>
-              </div>
-            )}
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs text-slate-500">
+              {data.codigo || data.proposta}
+            </Badge>
+            <DialogTitle className="text-lg leading-tight text-slate-800">{data.descricao || data.etapa}</DialogTitle>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DialogHeader>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        <div className="space-y-6 py-2">
+          {/* Status */}
+          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <span className="text-sm font-medium text-slate-600">Status</span>
+            <Badge
+              className={
+                data.status_contratacao === "Negociadas"
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                  : data.status_contratacao === "Em Andamento"
+                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                    : "bg-red-100 text-red-700 hover:bg-red-200"
+              }
+            >
+              {data.status_contratacao || "A Negociar"}
+            </Badge>
+          </div>
+
+          {/* Dados Gerais */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                <User className="w-3 h-3" /> Responsável
+              </span>
+              <p className="text-sm font-medium text-slate-700">{data.responsavel || "-"}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> Unidade
+              </span>
+              <p className="text-sm font-medium text-slate-700">
+                {data.qtd} {data.unidade}
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Detalhamento de Custos */}
+          <div className="space-y-3">
+            <h4 className="text-xs text-slate-400 uppercase font-bold flex items-center gap-1 mb-2">
+              <DollarSign className="w-3 h-3" /> Composição de Custos
+            </h4>
+
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex flex-col p-2 bg-blue-50/50 rounded border border-blue-100">
+                <span className="text-[10px] text-blue-600 font-bold flex items-center gap-1">
+                  <HardHat className="w-3 h-3" /> Mão de Obra
+                </span>
+                <span className="font-mono text-slate-700">{formatCurrency(data.valor_mao_de_obra)}</span>
+              </div>
+              <div className="flex flex-col p-2 bg-orange-50/50 rounded border border-orange-100">
+                <span className="text-[10px] text-orange-600 font-bold flex items-center gap-1">
+                  <Hammer className="w-3 h-3" /> Materiais
+                </span>
+                <span className="font-mono text-slate-700">{formatCurrency(data.valor_materiais)}</span>
+              </div>
+              <div className="flex flex-col p-2 bg-yellow-50/50 rounded border border-yellow-100">
+                <span className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
+                  <Construction className="w-3 h-3" /> Equipamentos
+                </span>
+                <span className="font-mono text-slate-700">{formatCurrency(data.valor_equipamentos)}</span>
+              </div>
+              <div className="flex flex-col p-2 bg-emerald-50/50 rounded border border-emerald-100">
+                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                  <FileText className="w-3 h-3" /> Verbas
+                </span>
+                <span className="font-mono text-slate-700">{formatCurrency(data.valor_verbas)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
+              <span className="font-bold text-slate-700">Total do Item</span>
+              <span className="font-bold font-mono text-lg text-slate-900">
+                {formatCurrency(data.preco_total || data.precoTotal)}
+              </span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Dados de Contratação */}
+          {data.status_contratacao === "Negociadas" && (
+            <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-1">
+              <span className="text-xs text-green-600 uppercase font-bold">Valor Fechado</span>
+              <p className="text-lg font-mono font-bold text-green-700">{formatCurrency(data.valor_contratado)}</p>
+            </div>
+          )}
+
+          {data.observacao && (
+            <div className="space-y-1 bg-slate-50 p-3 rounded text-sm text-slate-600 italic">
+              <p>"{data.observacao}"</p>
+            </div>
+          )}
+
+          <div className="text-xs text-slate-400 text-right">
+            Criado em: {data.created_at ? format(new Date(data.created_at), "dd/MM/yyyy") : "-"}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
