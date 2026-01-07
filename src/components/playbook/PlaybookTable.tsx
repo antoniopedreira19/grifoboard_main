@@ -73,7 +73,7 @@ export function PlaybookTable({
             <TableRow>
               <TableHead className="w-[80px] text-center text-xs font-bold text-slate-700">Nível</TableHead>
               <TableHead className="w-[100px] text-xs font-bold text-slate-700">Código</TableHead>
-              <TableHead className="min-w-[300px] text-xs font-bold text-slate-700">Descrição</TableHead>
+              <TableHead className="w-[200px] max-w-[200px] text-xs font-bold text-slate-700">Descrição</TableHead>
               <TableHead className="w-[60px] text-center text-xs font-bold text-slate-700">Unid.</TableHead>
               <TableHead className="w-[80px] text-center text-xs font-bold text-slate-700">Qtd.</TableHead>
 
@@ -131,18 +131,20 @@ export function PlaybookTable({
                   <TableCell className="text-xs font-mono text-slate-500 py-2">
                     {item.codigo || item.proposta}
                   </TableCell>
-                  <TableCell className="py-2">
+                  <TableCell className="py-2 max-w-[200px]">
                     <div
                       className={cn(
-                        "flex items-center gap-2 text-sm",
+                        "flex items-start gap-2 text-sm",
                         item.nivel === 1 && "pl-4",
                         item.nivel === 2 && "pl-8 text-slate-600",
                       )}
                     >
-                      {item.nivel === 0 && <LayoutList className="h-4 w-4 text-slate-700" />}
-                      {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
-                      {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
-                      <span className="truncate max-w-[400px]" title={item.descricao || item.etapa}>
+                      <span className="flex-shrink-0 mt-0.5">
+                        {item.nivel === 0 && <LayoutList className="h-4 w-4 text-slate-700" />}
+                        {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
+                        {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
+                      </span>
+                      <span className="break-words whitespace-normal leading-tight" title={item.descricao || item.etapa}>
                         {item.descricao || item.etapa}
                       </span>
                     </div>
