@@ -46,7 +46,8 @@ export function ContractingManagement() {
     try {
       setLoading(true);
       const data = await playbookService.listarItens(userSession.obraAtiva.id);
-      setItems(data.filter((item) => item.nivel === 2));
+      // Inclui todos os níveis que tenham destinos definidos
+      setItems(data);
     } catch (error) {
       console.error("Erro ao carregar itens", error);
       toast({
