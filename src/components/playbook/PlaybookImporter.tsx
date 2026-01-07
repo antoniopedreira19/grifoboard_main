@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogDescription,
@@ -25,6 +24,10 @@ import {
   ListTree,
   Minus,
   Info,
+  HardHat,
+  Hammer,
+  Construction,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,13 +37,19 @@ import { useAuth } from "@/context/AuthContext";
 import { playbookService } from "@/services/playbookService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Interface interna do componente com NIVEL
+// Interface interna do componente atualizada
 interface PlaybookItem {
   id: number;
+  codigo: string; // Nova coluna baseada no CSV
   descricao: string;
   unidade: string;
   qtd: number;
-  precoUnitario: number;
+  // Novos campos desagregados
+  valorMaoDeObra: number;
+  valorMateriais: number;
+  valorEquipamentos: number;
+  valorVerbas: number;
+  // Totais
   precoTotal: number;
   nivel: 0 | 1 | 2; // 0=Principal, 1=Subetapa, 2=Item
   isEtapa: boolean;
@@ -66,26 +75,48 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    const headers = ["Descrição", "Unidade", "Qtd", "Preço Unitário", "Preço Total"];
+    // Cabeçalhos exatos solicitados
+    const headers = [
+      "Código",
+      "Descrição",
+      "Unidade",
+      "Quantidade orçada",
+      "Mão de obra",
+      "Materiais & Ferramentas",
+      "Equipamentos de Obra",
+      "Verbas, Taxas e Impostos",
+      "Preço total",
+    ];
     const ws = XLSX.utils.aoa_to_sheet([headers]);
 
-    ws["!cols"] = [{ wch: 45 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+    ws["!cols"] = [
+      { wch: 15 }, // Código
+      { wch: 45 }, // Descrição
+      { wch: 10 }, // Unidade
+      { wch: 12 }, // Qtd
+      { wch: 15 }, // MO
+      { wch: 20 }, // Mat
+      { wch: 15 }, // Equip
+      { wch: 15 }, // Verbas
+      { wch: 15 }, // Total
+    ];
 
-    const headerCells = ["A1", "B1", "C1", "D1", "E1"];
-    headerCells.forEach((cell) => {
-      if (ws[cell]) {
-        ws[cell].s = {
+    const headerRange = XLSX.utils.decode_range(ws["!ref"] || "A1:I1");
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+      const address = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (ws[address]) {
+        ws[address].s = {
           fill: { fgColor: { rgb: "112231" } },
           font: { color: { rgb: "A47528" }, bold: true },
           alignment: { horizontal: "center" },
         };
       }
-    });
+    }
 
-    XLSX.utils.book_append_sheet(wb, ws, "Orçamento");
-    XLSX.writeFile(wb, "modelo_orcamento_playbook.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Orçamento Grifo");
+    XLSX.writeFile(wb, "modelo_orcamento_grifo.xlsx");
 
-    toast({ title: "Template baixado!", description: "Preencha o arquivo e importe novamente." });
+    toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,27 +131,59 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
+      // Mapeamento baseado no CSV "TESTE ANTONIO"
+      // Col 0: Código | Col 1: Descrição | Col 2: Unidade | Col 3: Qtd
+      // Col 4: MO | Col 5: Mat | Col 6: Equip | Col 7: Verbas | Col 8: Total
       const formatted: PlaybookItem[] = data
-        .slice(1)
-        .map((row, index) => ({
-          id: index,
-          descricao: row[0] ? String(row[0]).trim() : "",
-          unidade: row[1] ? String(row[1]).trim() : "",
-          qtd: row[2] ? Number(row[2]) : 0,
-          precoUnitario: row[3] ? Number(row[3]) : 0,
-          precoTotal: row[4] ? Number(row[4]) : 0,
-          nivel: 2 as 0 | 1 | 2,
-          isEtapa: false,
-        }))
-        .filter((item) => item.descricao !== "");
+        .slice(1) // Pula cabeçalho
+        .map((row, index) => {
+          const valorMaoDeObra = row[4] ? Number(row[4]) : 0;
+          const valorMateriais = row[5] ? Number(row[5]) : 0;
+          const valorEquipamentos = row[6] ? Number(row[6]) : 0;
+          const valorVerbas = row[7] ? Number(row[7]) : 0;
 
+          // Se coluna 8 (Total) estiver vazia, soma os componentes
+          const totalCalculado = valorMaoDeObra + valorMateriais + valorEquipamentos + valorVerbas;
+          const precoTotal = row[8] ? Number(row[8]) : totalCalculado;
+
+          return {
+            id: index,
+            codigo: row[0] ? String(row[0]).trim() : "",
+            descricao: row[1] ? String(row[1]).trim() : "",
+            unidade: row[2] ? String(row[2]).trim() : "",
+            qtd: row[3] ? Number(row[3]) : 0,
+            valorMaoDeObra,
+            valorMateriais,
+            valorEquipamentos,
+            valorVerbas,
+            precoTotal,
+            nivel: 2 as 0 | 1 | 2,
+            isEtapa: false,
+          };
+        })
+        .filter((item) => item.descricao !== "" || item.codigo !== "");
+
+      // Detecção Automática de Nível baseada no CSV
+      // Itens com QTD vazia ou 0 são considerados cabeçalhos (Etapas)
       const autoDetected = formatted.map((item) => {
-        const isPotentialHeader =
-          (!item.unidade || item.unidade.toLowerCase() === "vb") && (!item.qtd || item.qtd === 0);
+        const isHeader = !item.qtd || item.qtd === 0;
+
+        // Tenta inferir nível pelo código (ex: "01" = nv0, "01.001" = nv1) se for header
+        let nivel: 0 | 1 | 2 = 2;
+
+        if (isHeader) {
+          const dots = (item.codigo.match(/\./g) || []).length;
+          if (dots === 0) nivel = 0;
+          else if (dots === 1) nivel = 1;
+          else nivel = 1; // Fallback para subetapa
+        } else {
+          nivel = 2;
+        }
+
         return {
           ...item,
-          nivel: isPotentialHeader ? 0 : 2,
-          isEtapa: isPotentialHeader,
+          nivel,
+          isEtapa: nivel !== 2,
         } as PlaybookItem;
       });
 
@@ -151,7 +214,11 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     let grandTotalOriginal = 0;
 
     const hierarchyData = rawData.map((item) => {
-      const precoUnitarioMeta = item.precoUnitario * validCoef;
+      // Aplica o coeficiente em cada componente para gerar a Meta
+      const metaMO = item.valorMaoDeObra * validCoef;
+      const metaMat = item.valorMateriais * validCoef;
+      const metaEquip = item.valorEquipamentos * validCoef;
+      const metaVerb = item.valorVerbas * validCoef;
       const precoTotalMeta = item.precoTotal * validCoef;
 
       if (item.nivel === 2) {
@@ -159,7 +226,14 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         grandTotalOriginal += item.precoTotal;
       }
 
-      return { ...item, precoUnitarioMeta, precoTotalMeta };
+      return {
+        ...item,
+        metaMO,
+        metaMat,
+        metaEquip,
+        metaVerb,
+        precoTotalMeta,
+      };
     });
 
     const finalData = hierarchyData.map((item) => ({
@@ -180,10 +254,15 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     try {
       const itemsToSave = processedData.items.map((item, index) => ({
         obra_id: obraId,
+        codigo: item.codigo,
         descricao: item.descricao,
         unidade: item.unidade,
-        qtd: item.qtd,
-        preco_unitario: item.precoUnitario,
+        quantidade_orcada: item.qtd,
+        // Salvando os 4 novos valores
+        valor_mao_de_obra: item.valorMaoDeObra,
+        valor_materiais: item.valorMateriais,
+        valor_equipamentos: item.valorEquipamentos,
+        valor_verbas: item.valorVerbas,
         preco_total: item.precoTotal,
         is_etapa: item.nivel !== 2,
         nivel: item.nivel,
@@ -209,7 +288,11 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       setIsOpen(false);
     } catch (error) {
       console.error(error);
-      toast({ title: "Erro ao salvar", description: "Verifique sua conexão.", variant: "destructive" });
+      toast({
+        title: "Erro ao salvar",
+        description: "Verifique se a tabela do banco foi atualizada.",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -232,7 +315,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
           <div>
             <DialogTitle className="text-xl font-heading text-slate-800">Importação Inteligente</DialogTitle>
             <DialogDescription>
-              {step === 1 ? "Prepare seu arquivo e defina a hierarquia." : "Revise os valores calculados."}
+              {step === 1 ? "Prepare seu arquivo e defina a hierarquia." : "Revise os custos desagregados."}
             </DialogDescription>
           </div>
           <div className="flex items-center gap-4">
@@ -252,24 +335,16 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
           <div className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
             {rawData.length === 0 ? (
               <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto w-full">
-                {/* AVISO IMPORTANTE SOBRE A IMPORTAÇÃO */}
                 <Alert className="bg-amber-50 border-amber-200 text-amber-900">
                   <Info className="h-5 w-5 text-amber-600" />
                   <div className="ml-2">
-                    <AlertTitle className="text-amber-800 font-bold mb-1">Antes de importar:</AlertTitle>
+                    <AlertTitle className="text-amber-800 font-bold mb-1">Modelo de Importação</AlertTitle>
                     <AlertDescription className="text-sm text-amber-700 space-y-1">
+                      <p>1. Baixe o modelo abaixo.</p>
                       <p>
-                        1. <strong>Baixe o Modelo:</strong> Use o botão abaixo para baixar a planilha padrão.
+                        2. Preencha as colunas: <strong>Mão de Obra, Materiais, Equipamentos e Verbas</strong>.
                       </p>
-                      <p>
-                        2. <strong>Sem formatação:</strong> Remova células mescladas e fórmulas do seu orçamento.
-                      </p>
-                      <p>
-                        3. <strong>Copie os dados:</strong> Cole seu orçamento no modelo respeitando as colunas.
-                      </p>
-                      <p>
-                        4. <strong>Sem numeração:</strong> Não inclua a coluna de numeração dos itens (ex: 1.1, 1.2).
-                      </p>
+                      <p>3. Mantenha a coluna "Código" para auxiliar na ordenação.</p>
                     </AlertDescription>
                   </div>
                 </Alert>
@@ -283,8 +358,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                       <Upload className="h-8 w-8 text-blue-600" />
                     </div>
                     <div className="text-center space-y-1">
-                      <span className="text-lg font-medium text-slate-700">Clique para selecionar o arquivo .xlsx</span>
-                      <p className="text-sm text-slate-400">Importe o modelo preenchido aqui</p>
+                      <span className="text-lg font-medium text-slate-700">Selecione o arquivo .xlsx</span>
+                      <p className="text-sm text-slate-400">Modelo "TESTE ANTONIO" compatível</p>
                     </div>
                   </Label>
                   <Input
@@ -311,9 +386,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                 <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-blue-800 text-xs flex flex-col md:flex-row items-center gap-4 justify-between">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    <span>
-                      Clique na linha para alternar a hierarquia (Principal {">"} Subetapa {">"} Item)
-                    </span>
+                    <span>Verifique a hierarquia. O sistema tentou detectar Etapas baseado na Quantidade Vazia.</span>
                   </div>
                   <div className="flex gap-2">
                     <Badge className="bg-slate-800">PRINCIPAL (0)</Badge>
@@ -329,7 +402,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                     <Table>
                       <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className="w-[120px] text-center">Nível</TableHead>
+                          <TableHead className="w-[100px] text-center">Nível</TableHead>
+                          <TableHead className="w-[100px]">Código</TableHead>
                           <TableHead>Descrição</TableHead>
                           <TableHead className="w-[150px] text-right">Preço Total</TableHead>
                         </TableRow>
@@ -354,7 +428,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                               )}
                               {row.nivel === 1 && (
                                 <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-800">
-                                  SUBETAPA
+                                  SUB
                                 </Badge>
                               )}
                               {row.nivel === 2 && (
@@ -363,6 +437,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                                 </Badge>
                               )}
                             </TableCell>
+                            <TableCell className="text-xs font-mono text-slate-500">{row.codigo}</TableCell>
                             <TableCell className="py-2">
                               <div
                                 className={cn(
@@ -391,7 +466,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
           </div>
         )}
 
-        {/* ... (restante do código igual) ... */}
         {step === 2 && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="bg-slate-50 border-b border-slate-200 p-4 grid grid-cols-1 md:grid-cols-3 gap-6 items-end shadow-sm z-10">
@@ -422,26 +496,28 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                   onValueChange={(v: "1" | "2") => setSelectedCoef(v)}
                   className="flex gap-2"
                 >
-                  <RadioGroupItem value="1" id="c1" className="sr-only" />
-                  <Label
-                    htmlFor="c1"
+                  <div
                     className={cn(
                       "flex-1 flex items-center justify-center px-3 py-2 rounded-md border cursor-pointer text-sm font-bold",
                       selectedCoef === "1" ? "bg-primary text-white" : "bg-white",
                     )}
                   >
-                    Opção 1
-                  </Label>
-                  <RadioGroupItem value="2" id="c2" className="sr-only" />
-                  <Label
-                    htmlFor="c2"
+                    <RadioGroupItem value="1" id="c1" className="sr-only" />
+                    <Label htmlFor="c1" className="cursor-pointer w-full text-center">
+                      Opção 1
+                    </Label>
+                  </div>
+                  <div
                     className={cn(
                       "flex-1 flex items-center justify-center px-3 py-2 rounded-md border cursor-pointer text-sm font-bold",
                       selectedCoef === "2" ? "bg-primary text-white" : "bg-white",
                     )}
                   >
-                    Opção 2
-                  </Label>
+                    <RadioGroupItem value="2" id="c2" className="sr-only" />
+                    <Label htmlFor="c2" className="cursor-pointer w-full text-center">
+                      Opção 2
+                    </Label>
+                  </div>
                 </RadioGroup>
               </div>
             </div>
@@ -452,12 +528,12 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                   <Table>
                     <TableHeader className="bg-slate-50 border-b border-slate-200 sticky top-0 z-20">
                       <TableRow>
-                        <TableHead className="w-[40%] pl-6">Descrição</TableHead>
-                        <TableHead className="text-right">Unid.</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
-                        <TableHead className="text-right">Preço Total</TableHead>
-                        <TableHead className="text-right bg-blue-50/50">Total Meta</TableHead>
-                        <TableHead className="text-right">%</TableHead>
+                        <TableHead className="w-[30%] pl-6">Descrição</TableHead>
+                        <TableHead className="text-right w-[10%]">Mão de Obra</TableHead>
+                        <TableHead className="text-right w-[10%]">Materiais</TableHead>
+                        <TableHead className="text-right w-[10%]">Equip.</TableHead>
+                        <TableHead className="text-right w-[10%]">Verbas</TableHead>
+                        <TableHead className="text-right w-[15%] bg-blue-50/50">Total Meta</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -471,40 +547,56 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                           <TableCell className="py-2 pl-4">
                             <div
                               className={cn(
-                                "flex items-center",
+                                "flex flex-col",
                                 item.nivel === 0
                                   ? "uppercase font-black"
                                   : item.nivel === 1
-                                    ? "pl-6 font-bold text-blue-900"
-                                    : "pl-12 text-slate-600 capitalize",
+                                    ? "pl-4 font-bold text-blue-900"
+                                    : "pl-8 text-slate-600 capitalize",
                               )}
                             >
-                              {item.descricao.toLowerCase()}
+                              <span>{item.descricao.toLowerCase()}</span>
+                              {item.codigo && (
+                                <span className="text-[10px] text-slate-400 font-mono">{item.codigo}</span>
+                              )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right text-xs">{item.unidade}</TableCell>
-                          <TableCell className="text-right text-xs">{item.qtd || "-"}</TableCell>
-                          <TableCell className="text-right text-xs font-mono">
-                            {formatCurrency(item.precoTotal)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs font-mono font-bold text-blue-800 bg-blue-50/30">
-                            {formatCurrency(item.precoTotalMeta)}
+
+                          <TableCell className="text-right text-xs">
+                            {item.nivel === 2 && item.valorMaoDeObra > 0 && (
+                              <div className="text-blue-600 font-medium">{formatCurrency(item.metaMO)}</div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right text-xs">
-                            {item.nivel === 2 && item.porcentagem > 0 ? `${item.porcentagem.toFixed(2)}%` : ""}
+                            {item.nivel === 2 && item.valorMateriais > 0 && (
+                              <div className="text-orange-600 font-medium">{formatCurrency(item.metaMat)}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            {item.nivel === 2 && item.valorEquipamentos > 0 && (
+                              <div className="text-yellow-600 font-medium">{formatCurrency(item.metaEquip)}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            {item.nivel === 2 && item.valorVerbas > 0 && (
+                              <div className="text-emerald-600 font-medium">{formatCurrency(item.metaVerb)}</div>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="text-right text-xs font-mono font-bold text-blue-800 bg-blue-50/30">
+                            {formatCurrency(item.precoTotalMeta)}
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                     <TableFooter className="bg-slate-800 text-white sticky bottom-0 z-20">
                       <TableRow>
-                        <TableCell colSpan={4} className="pl-6 font-bold">
+                        <TableCell colSpan={5} className="pl-6 font-bold">
                           Total Geral (Soma Itens)
                         </TableCell>
                         <TableCell className="text-right font-bold font-mono text-yellow-400">
                           {formatCurrency(processedData.grandTotalMeta)}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-xs">100%</TableCell>
                       </TableRow>
                     </TableFooter>
                   </Table>
