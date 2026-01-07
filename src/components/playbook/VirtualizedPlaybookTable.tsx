@@ -62,10 +62,8 @@ const DestinationSelector = memo(function DestinationSelector({
 
   const metaMaoDeObra = getMetaValue(item.valor_mao_de_obra || 0);
   const metaMateriais = getMetaValue(item.valor_materiais || 0);
-  const metaEquipamentos = getMetaValue(item.valor_equipamentos || 0);
-  const metaVerbas = getMetaValue(item.valor_verbas || 0);
 
-  const hasValues = metaMaoDeObra > 0 || metaMateriais > 0 || metaEquipamentos > 0 || metaVerbas > 0;
+  const hasValues = metaMaoDeObra > 0 || metaMateriais > 0;
   
   if (!hasValues) return null;
 
@@ -129,53 +127,6 @@ const DestinationSelector = memo(function DestinationSelector({
             </div>
           )}
           
-          {metaEquipamentos > 0 && (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col">
-                <span className="text-xs text-yellow-700 font-medium">Equipamentos</span>
-                <span className="text-[10px] text-slate-500">{formatCurrency(metaEquipamentos)}</span>
-              </div>
-              <Select
-                value={item.destino_equipamentos || ""}
-                onValueChange={(v) => onDestinationChange(item.id, "destino_equipamentos", v)}
-              >
-                <SelectTrigger className="h-7 w-32 text-xs">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {destinationOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {metaVerbas > 0 && (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col">
-                <span className="text-xs text-emerald-700 font-medium">Verbas</span>
-                <span className="text-[10px] text-slate-500">{formatCurrency(metaVerbas)}</span>
-              </div>
-              <Select
-                value={item.destino_verbas || ""}
-                onValueChange={(v) => onDestinationChange(item.id, "destino_verbas", v)}
-              >
-                <SelectTrigger className="h-7 w-32 text-xs">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {destinationOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -289,17 +240,6 @@ const PlaybookRow = memo(function PlaybookRow({
         <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
       </div>
 
-      {/* Equipamentos */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-yellow-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">
-          {formatCurrency(item.valor_equipamentos)}
-        </span>
-      </div>
-
-      {/* Verbas */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-emerald-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
-      </div>
 
       {/* Total Original */}
       <div className="w-[120px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
@@ -442,7 +382,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
   const virtualItems = virtualizer.getVirtualItems();
 
   // Calculate total width for proper scrolling
-  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 100);
+  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 100);
 
   return (
     <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -490,8 +430,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
           <div className="w-[60px] text-center py-3 text-slate-700 flex-shrink-0">Qtd.</div>
           <div className="w-[120px] text-right py-3 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
           <div className="w-[120px] text-right py-3 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
-          <div className="w-[120px] text-right py-3 px-2 text-yellow-700 bg-yellow-50/50 flex-shrink-0">Equip.</div>
-          <div className="w-[120px] text-right py-3 px-2 text-emerald-700 bg-emerald-50/50 flex-shrink-0">Verbas</div>
           <div className="w-[120px] text-right py-3 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
           <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
           <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">%</div>
