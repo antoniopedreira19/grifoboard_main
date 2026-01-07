@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { PlaybookImporter } from "@/components/playbook/PlaybookImporter";
-import { PlaybookTable } from "@/components/playbook/PlaybookTable";
+import { VirtualizedPlaybookTable } from "@/components/playbook/VirtualizedPlaybookTable";
 import PlaybookSummary from "@/components/playbook/PlaybookSummary";
 import { ContractingManagement } from "@/components/playbook/ContractingManagement";
 import { NoObraSelected } from "@/components/shared/NoObraSelected";
@@ -35,11 +35,6 @@ const Playbook = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("orcamento");
-  const [playbookData, setPlaybookData] = useState<{
-    items: PlaybookItem[];
-    grandTotalMeta: number;
-    grandTotalOriginal: number;
-  } | null>(null);
 
   const [coeficiente1, setCoeficiente1] = useState<number>(0.57);
   const [coeficiente2, setCoeficiente2] = useState<number>(0.75);
@@ -62,15 +57,21 @@ const Playbook = () => {
 
   const isAdmin = userRole === "admin" || userRole === "master_admin";
 
-  const processItems = (items: PlaybookItem[], coef: number) => {
+  // Memoized coefficient based on selection
+  const activeCoef = useMemo(() => {
+    return coeficienteSelecionado === "2" ? coeficiente2 : coeficiente1;
+  }, [coeficiente1, coeficiente2, coeficienteSelecionado]);
+
+  // Memoized processed items - only recalculates when rawItems or coef changes
+  const processedData = useMemo(() => {
+    if (rawItems.length === 0) return null;
+
     let grandTotalMeta = 0;
     let grandTotalOriginal = 0;
 
-    const processedItems = items.map((item) => {
-      // Ajuste de cálculo se necessário, aqui mantendo lógica simples
-      const precoUnitarioMeta = (item.preco_unitario || 0) * coef;
-      const precoTotalMeta = (item.preco_total || 0) * coef;
-
+    const processedItems = rawItems.map((item) => {
+      const precoUnitarioMeta = (item.preco_unitario || 0) * activeCoef;
+      const precoTotalMeta = (item.preco_total || 0) * activeCoef;
       const nivel = item.nivel ?? (item.is_etapa ? 0 : 2);
 
       if (nivel === 2) {
@@ -81,8 +82,9 @@ const Playbook = () => {
       return {
         ...item,
         nivel,
-        precoUnitarioMeta, // Campos calculados no front apenas para visualização
+        precoUnitarioMeta,
         precoTotalMeta,
+        precoTotal: item.preco_total,
         porcentagem: 0,
       };
     });
@@ -93,12 +95,12 @@ const Playbook = () => {
     }));
 
     return { items: finalItems as any[], grandTotalMeta, grandTotalOriginal };
-  };
+  }, [rawItems, activeCoef]);
 
-  const fetchPlaybook = async (silent = false) => {
+  const fetchPlaybook = useCallback(async (silent = false) => {
     if (!obraId) {
       setIsLoading(false);
-      setPlaybookData(null);
+      setRawItems([]);
       return;
     }
     if (!silent) setIsLoading(true);
@@ -106,7 +108,6 @@ const Playbook = () => {
       const { config, items } = await playbookService.getPlaybook(obraId);
 
       if (!items || items.length === 0) {
-        setPlaybookData(null);
         setRawItems([]);
         return;
       }
@@ -119,32 +120,24 @@ const Playbook = () => {
       setCoeficiente2(c2);
       setCoeficienteSelecionado(selected);
       setRawItems(items);
-
-      const coef = selected === "2" ? c2 : c1;
-      const processed = processItems(items, coef);
-      setPlaybookData(processed);
     } catch (error) {
       console.error(error);
       toast({ title: "Erro", description: "Falha ao carregar dados.", variant: "destructive" });
     } finally {
       if (!silent) setIsLoading(false);
     }
-  };
+  }, [obraId, toast]);
 
-  const silentRefetch = () => fetchPlaybook(true);
+  const silentRefetch = useCallback(() => fetchPlaybook(true), [fetchPlaybook]);
 
-  const handleCoeficienteChange = async (newSelected: "1" | "2", newC1?: number, newC2?: number) => {
-    const c1 = newC1 ?? coeficiente1;
-    const c2 = newC2 ?? coeficiente2;
-    const coef = newSelected === "2" ? c2 : c1;
+  // Optimistic update handler - updates local state immediately
+  const handleOptimisticUpdate = useCallback((itemId: string, field: string, value: string) => {
+    setRawItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, [field]: value } : item
+    ));
+  }, []);
 
-    if (rawItems.length > 0) {
-      const processed = processItems(rawItems, coef);
-      setPlaybookData(processed);
-    }
-  };
-
-  const saveCoeficienteConfig = async () => {
+  const saveCoeficienteConfig = useCallback(async () => {
     if (!obraId) return;
     setIsSavingConfig(true);
     try {
@@ -156,7 +149,7 @@ const Playbook = () => {
           coeficiente_2: coeficiente2,
           coeficiente_selecionado: coeficienteSelecionado,
         },
-        rawItems, // Salva os itens como estão, apenas atualiza config de coeficientes
+        rawItems,
       );
       toast({ title: "Sucesso", description: "Coeficientes atualizados." });
     } catch (error) {
@@ -165,13 +158,13 @@ const Playbook = () => {
     } finally {
       setIsSavingConfig(false);
     }
-  };
+  }, [obraId, coeficiente1, coeficiente2, coeficienteSelecionado, rawItems, toast]);
 
   useEffect(() => {
     fetchPlaybook();
   }, [obraId]);
 
-  const handleClearData = async () => {
+  const handleClearData = useCallback(async () => {
     if (!obraId) return;
     try {
       await playbookService.savePlaybook(
@@ -184,12 +177,12 @@ const Playbook = () => {
         },
         [],
       );
-      setPlaybookData(null);
+      setRawItems([]);
       toast({ title: "Dados limpos", description: "Orçamento removido." });
     } catch (e) {
       toast({ title: "Erro", description: "Falha ao limpar.", variant: "destructive" });
     }
-  };
+  }, [obraId, toast]);
 
   return (
     <div className="container mx-auto max-w-[1600px] px-4 sm:px-6 py-4 min-h-screen pb-24 space-y-6 bg-slate-50/30">
@@ -205,7 +198,7 @@ const Playbook = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {playbookData && isAdmin && (
+          {processedData && isAdmin && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
@@ -237,7 +230,7 @@ const Playbook = () => {
           <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
           <p className="text-slate-500">Carregando...</p>
         </div>
-      ) : !playbookData ? (
+      ) : !processedData ? (
         <Card className="border-dashed border-2 border-slate-200 bg-white/50 min-h-[400px]">
           <CardContent className="flex flex-col items-center justify-center h-full py-20 text-center space-y-4">
             <BookOpen className="h-10 w-10 text-slate-300" />
@@ -271,11 +264,7 @@ const Playbook = () => {
                       
                       <RadioGroup
                         value={coeficienteSelecionado}
-                        onValueChange={(v) => {
-                          const newSel = v as "1" | "2";
-                          setCoeficienteSelecionado(newSel);
-                          handleCoeficienteChange(newSel);
-                        }}
+                        onValueChange={(v) => setCoeficienteSelecionado(v as "1" | "2")}
                         className="flex items-center gap-4"
                       >
                         <div className="flex items-center gap-2">
@@ -285,13 +274,7 @@ const Playbook = () => {
                             type="number"
                             step="0.01"
                             value={coeficiente1}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setCoeficiente1(val);
-                              if (coeficienteSelecionado === "1") {
-                                handleCoeficienteChange("1", val, coeficiente2);
-                              }
-                            }}
+                            onChange={(e) => setCoeficiente1(parseFloat(e.target.value) || 0)}
                             className="w-20 h-8 text-sm"
                           />
                         </div>
@@ -302,13 +285,7 @@ const Playbook = () => {
                             type="number"
                             step="0.01"
                             value={coeficiente2}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setCoeficiente2(val);
-                              if (coeficienteSelecionado === "2") {
-                                handleCoeficienteChange("2", coeficiente1, val);
-                              }
-                            }}
+                            onChange={(e) => setCoeficiente2(parseFloat(e.target.value) || 0)}
                             className="w-20 h-8 text-sm"
                           />
                         </div>
@@ -328,20 +305,20 @@ const Playbook = () => {
                 </Card>
               )}
               <PlaybookSummary
-                totalOriginal={playbookData.grandTotalOriginal}
-                totalMeta={playbookData.grandTotalMeta}
+                totalOriginal={processedData.grandTotalOriginal}
+                totalMeta={processedData.grandTotalMeta}
                 showOriginal={isAdmin}
               />
-              <PlaybookTable
-                data={playbookData.items as any}
-                grandTotalOriginal={playbookData.grandTotalOriginal}
-                grandTotalMeta={playbookData.grandTotalMeta}
+              <VirtualizedPlaybookTable
+                data={processedData.items}
+                grandTotalOriginal={processedData.grandTotalOriginal}
+                grandTotalMeta={processedData.grandTotalMeta}
                 onUpdate={silentRefetch}
+                onOptimisticUpdate={handleOptimisticUpdate}
               />
             </TabsContent>
 
             <TabsContent value="contratacao">
-              {/* CORREÇÃO AQUI: Removemos as props que causavam erro */}
               <ContractingManagement />
             </TabsContent>
           </Tabs>

@@ -1,0 +1,449 @@
+import { memo, useMemo, useState, useCallback, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Edit2, LayoutList, ListTree, Minus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { PlaybookItem } from "@/types/playbook";
+import { cn } from "@/lib/utils";
+import { playbookService } from "@/services/playbookService";
+import { useToast } from "@/hooks/use-toast";
+import { LazyDestinationSelect } from "./LazyDestinationSelect";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+interface VirtualizedPlaybookTableProps {
+  data: PlaybookItem[];
+  grandTotalOriginal: number;
+  grandTotalMeta: number;
+  onUpdate: () => void;
+  onOptimisticUpdate?: (itemId: string, field: string, value: string) => void;
+  onEdit?: (item: PlaybookItem) => void;
+  readOnly?: boolean;
+}
+
+// Memoized currency formatter
+const formatCurrency = (val: number | undefined | null) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(val || 0);
+};
+
+// Memoized row component
+const PlaybookRow = memo(function PlaybookRow({
+  item,
+  grandTotalOriginal,
+  isCollapsed,
+  onToggleCollapse,
+  onDestinationChange,
+  onDelete,
+  onEdit,
+  readOnly,
+}: {
+  item: any;
+  grandTotalOriginal: number;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onDestinationChange: (itemId: string, field: string, value: string) => void;
+  onDelete: (id: string) => void;
+  onEdit?: (item: PlaybookItem) => void;
+  readOnly?: boolean;
+}) {
+  const isParent = item.nivel === 0 || item.nivel === 1;
+  const percentage = useMemo(() => {
+    const total = item.precoTotal || item.preco_total || 0;
+    if (grandTotalOriginal === 0) return 0;
+    return (total / grandTotalOriginal) * 100;
+  }, [item.precoTotal, item.preco_total, grandTotalOriginal]);
+  
+  const isHighPercentage = percentage > 2;
+
+  const getMetaValue = useCallback((originalVal: number) => {
+    if (!item.precoTotal || item.precoTotal === 0) return 0;
+    const ratio = (item.precoTotalMeta || 0) / item.precoTotal;
+    return originalVal * ratio;
+  }, [item.precoTotal, item.precoTotalMeta]);
+
+  return (
+    <div
+      className={cn(
+        "flex items-stretch border-b border-slate-100 hover:bg-slate-50/80 transition-colors min-h-[48px]",
+        item.nivel === 0 && "bg-slate-100/50 font-semibold border-t-2 border-slate-200",
+        item.nivel === 1 && "bg-blue-50/10 text-blue-900",
+      )}
+    >
+      {/* Nível */}
+      <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
+        {item.nivel === 0 && (
+          <div className="flex items-center gap-1">
+            {onToggleCollapse && (
+              <button onClick={onToggleCollapse} className="p-0.5 hover:bg-slate-200 rounded">
+                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            )}
+            <Badge className="bg-slate-800 h-5 text-[10px]">NV 0</Badge>
+          </div>
+        )}
+        {item.nivel === 1 && (
+          <div className="flex items-center gap-1">
+            {onToggleCollapse && (
+              <button onClick={onToggleCollapse} className="p-0.5 hover:bg-blue-200 rounded">
+                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            )}
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800 h-5 text-[10px]">
+              NV 1
+            </Badge>
+          </div>
+        )}
+        {item.nivel === 2 && (
+          <Badge variant="outline" className="border-slate-200 text-slate-400 h-5 text-[10px]">
+            ITEM
+          </Badge>
+        )}
+      </div>
+
+      {/* Descrição */}
+      <div className="w-[250px] py-2 flex-shrink-0">
+        <div
+          className={cn(
+            "flex items-start gap-2 text-sm",
+            item.nivel === 1 && "pl-4",
+            item.nivel === 2 && "pl-8 text-slate-600",
+          )}
+        >
+          <span className="flex-shrink-0 mt-0.5">
+            {item.nivel === 0 && <LayoutList className="h-4 w-4 text-slate-700" />}
+            {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
+            {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
+          </span>
+          <span className="break-words whitespace-normal leading-tight line-clamp-2" title={item.descricao || item.etapa}>
+            {item.descricao || item.etapa}
+          </span>
+        </div>
+      </div>
+
+      {/* Unidade */}
+      <div className="w-[50px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
+        {item.unidade}
+      </div>
+
+      {/* Qtd */}
+      <div className="w-[50px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
+        {item.qtd}
+      </div>
+
+      {/* % */}
+      <div className="w-[60px] flex items-center justify-center py-2 flex-shrink-0">
+        <span
+          className={cn(
+            "text-xs font-medium px-1.5 py-0.5 rounded",
+            isHighPercentage ? "bg-amber-100 text-amber-800 font-bold" : "text-slate-500"
+          )}
+        >
+          {percentage.toFixed(1)}%
+        </span>
+      </div>
+
+      {/* Mão de Obra */}
+      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-blue-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">
+          {formatCurrency(item.valor_mao_de_obra)}
+        </span>
+        {item.nivel === 2 && (
+          <span className="text-[10px] text-blue-600">
+            {formatCurrency(getMetaValue(item.valor_mao_de_obra))}
+          </span>
+        )}
+        {item.nivel === 2 && item.valor_mao_de_obra > 0 && (
+          <LazyDestinationSelect
+            value={item.destino_mao_de_obra}
+            onChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
+          />
+        )}
+      </div>
+
+      {/* Materiais */}
+      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-orange-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
+        {item.nivel === 2 && (
+          <span className="text-[10px] text-orange-600">
+            {formatCurrency(getMetaValue(item.valor_materiais))}
+          </span>
+        )}
+        {item.nivel === 2 && item.valor_materiais > 0 && (
+          <LazyDestinationSelect
+            value={item.destino_materiais}
+            onChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
+          />
+        )}
+      </div>
+
+      {/* Equipamentos */}
+      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-yellow-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">
+          {formatCurrency(item.valor_equipamentos)}
+        </span>
+        {item.nivel === 2 && (
+          <span className="text-[10px] text-yellow-600">
+            {formatCurrency(getMetaValue(item.valor_equipamentos))}
+          </span>
+        )}
+        {item.nivel === 2 && item.valor_equipamentos > 0 && (
+          <LazyDestinationSelect
+            value={item.destino_equipamentos}
+            onChange={(v) => onDestinationChange(item.id, "destino_equipamentos", v)}
+          />
+        )}
+      </div>
+
+      {/* Verbas */}
+      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-emerald-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
+        {item.nivel === 2 && (
+          <span className="text-[10px] text-emerald-600">
+            {formatCurrency(getMetaValue(item.valor_verbas))}
+          </span>
+        )}
+        {item.nivel === 2 && item.valor_verbas > 0 && (
+          <LazyDestinationSelect
+            value={item.destino_verbas}
+            onChange={(v) => onDestinationChange(item.id, "destino_verbas", v)}
+          />
+        )}
+      </div>
+
+      {/* Total Original */}
+      <div className="w-[110px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
+        {formatCurrency(item.precoTotal || item.preco_total)}
+      </div>
+
+      {/* Total Meta */}
+      <div className="w-[110px] flex items-center justify-end py-2 px-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5 flex-shrink-0">
+        {formatCurrency(item.precoTotalMeta)}
+      </div>
+
+      {/* Ações */}
+      {!readOnly && (
+        <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(item)}>
+                <Edit2 className="h-3 w-3 text-slate-400" />
+              </Button>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-red-600">
+                  <Trash2 className="h-3 w-3 text-slate-400" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir item?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDelete(item.id)} className="bg-red-600">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
+  data,
+  grandTotalOriginal,
+  grandTotalMeta,
+  onUpdate,
+  onOptimisticUpdate,
+  onEdit,
+  readOnly = false,
+}: VirtualizedPlaybookTableProps) {
+  const { toast } = useToast();
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  // Memoize visible items based on collapsed sections
+  const visibleItems = useMemo(() => {
+    if (collapsedSections.size === 0) return data;
+
+    const result: typeof data = [];
+    let skipUntilLevel: number | null = null;
+    let skipParentId: string | null = null;
+
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      const nivel = item.nivel ?? 2;
+
+      // If we're skipping and this item is at a level <= skipUntilLevel, stop skipping
+      if (skipUntilLevel !== null && nivel <= skipUntilLevel) {
+        skipUntilLevel = null;
+        skipParentId = null;
+      }
+
+      // If we're currently skipping, continue
+      if (skipUntilLevel !== null) continue;
+
+      result.push(item);
+
+      // If this item is collapsed, start skipping
+      if (collapsedSections.has(item.id)) {
+        skipUntilLevel = nivel;
+        skipParentId = item.id;
+      }
+    }
+
+    return result;
+  }, [data, collapsedSections]);
+
+  const virtualizer = useVirtualizer({
+    count: visibleItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+  });
+
+  const handleToggleCollapse = useCallback((itemId: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await playbookService.deleteItem(id);
+      toast({ title: "Item excluído com sucesso" });
+      onUpdate();
+    } catch (error) {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
+    }
+  }, [toast, onUpdate]);
+
+  // Optimistic update handler
+  const handleDestinationChange = useCallback(async (itemId: string, field: string, value: string) => {
+    // Optimistic update - update UI immediately
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(itemId, field, value);
+    }
+
+    try {
+      await playbookService.atualizarItem(itemId, { [field]: value });
+      toast({ title: "Destino atualizado" });
+      // Only refetch if no optimistic update was provided
+      if (!onOptimisticUpdate) {
+        onUpdate();
+      }
+    } catch (error) {
+      toast({ title: "Erro ao atualizar", variant: "destructive" });
+      // Revert on error
+      onUpdate();
+    }
+  }, [toast, onUpdate, onOptimisticUpdate]);
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  return (
+    <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Header fixo */}
+      <div className="flex items-center bg-slate-50 border-b border-slate-200 text-xs font-bold">
+        <div className="w-[70px] text-center py-2 text-slate-700 flex-shrink-0">Nível</div>
+        <div className="w-[250px] py-2 text-slate-700 flex-shrink-0">Descrição</div>
+        <div className="w-[50px] text-center py-2 text-slate-700 flex-shrink-0">Unid.</div>
+        <div className="w-[50px] text-center py-2 text-slate-700 flex-shrink-0">Qtd.</div>
+        <div className="w-[60px] text-center py-2 text-slate-700 flex-shrink-0">%</div>
+        <div className="w-[130px] text-right py-2 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
+        <div className="w-[130px] text-right py-2 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
+        <div className="w-[130px] text-right py-2 px-2 text-yellow-700 bg-yellow-50/50 flex-shrink-0">Equip.</div>
+        <div className="w-[130px] text-right py-2 px-2 text-emerald-700 bg-emerald-50/50 flex-shrink-0">Verbas</div>
+        <div className="w-[110px] text-right py-2 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
+        <div className="w-[110px] text-right py-2 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
+        {!readOnly && <div className="w-[70px] text-center py-2 flex-shrink-0">Ações</div>}
+      </div>
+
+      {/* Virtualized rows */}
+      <div
+        ref={parentRef}
+        className="overflow-auto"
+        style={{ height: "calc(100vh - 400px)", minHeight: "400px" }}
+      >
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: "100%",
+            position: "relative",
+          }}
+        >
+          {virtualItems.map((virtualRow) => {
+            const item = visibleItems[virtualRow.index];
+            const isCollapsible = item.nivel === 0 || item.nivel === 1;
+            const isCollapsed = collapsedSections.has(item.id);
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <PlaybookRow
+                  item={item}
+                  grandTotalOriginal={grandTotalOriginal}
+                  isCollapsed={isCollapsible ? isCollapsed : undefined}
+                  onToggleCollapse={isCollapsible ? () => handleToggleCollapse(item.id) : undefined}
+                  onDestinationChange={handleDestinationChange}
+                  onDelete={handleDelete}
+                  onEdit={onEdit}
+                  readOnly={readOnly}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer com totais */}
+      <div className="flex items-center bg-slate-100 border-t-2 border-slate-300 text-sm font-bold">
+        <div className="flex-1 py-3 px-4 text-slate-700">
+          TOTAL GERAL ({visibleItems.length} itens)
+        </div>
+        <div className="w-[110px] text-right py-3 px-2 text-slate-900">
+          {formatCurrency(grandTotalOriginal)}
+        </div>
+        <div className="w-[110px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10">
+          {formatCurrency(grandTotalMeta)}
+        </div>
+        {!readOnly && <div className="w-[70px] flex-shrink-0" />}
+      </div>
+    </div>
+  );
+});
