@@ -421,10 +421,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                           "h-8 w-[140px] text-xs font-medium border-0",
                           getStatusColor(costItem.statusContratacao || "a_negociar")
                         )}>
-                          <div className="flex items-center gap-1.5">
-                            <StatusIcon className="h-3 w-3" />
-                            <SelectValue />
-                          </div>
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="a_negociar">
