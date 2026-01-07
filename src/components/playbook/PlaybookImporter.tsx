@@ -24,6 +24,7 @@ import {
   ListTree,
   Minus,
   Info,
+  Trash2, // Adicionado Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -73,14 +74,13 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    // Cabeçalhos exatos conforme a planilha de referência
     const headers = [
       "Código",
       "Descrição",
       "Unidade",
       "Quantidade orçada",
       "Mão de obra",
-      "Materiais & Ferramentas / EPI e EPC", // Ajustado
+      "Materiais & Ferramentas / EPI e EPC",
       "Equipamentos de Obra",
       "Verbas, Taxas e Impostos",
       "Preço total",
@@ -88,15 +88,15 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     const ws = XLSX.utils.aoa_to_sheet([headers]);
 
     ws["!cols"] = [
-      { wch: 15 }, // Código
-      { wch: 45 }, // Descrição
-      { wch: 10 }, // Unidade
-      { wch: 15 }, // Qtd
-      { wch: 15 }, // MO
-      { wch: 35 }, // Mat (Aumentado para caber o título)
-      { wch: 20 }, // Equip
-      { wch: 25 }, // Verbas
-      { wch: 15 }, // Total
+      { wch: 15 },
+      { wch: 45 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 35 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 15 },
     ];
 
     const headerRange = XLSX.utils.decode_range(ws["!ref"] || "A1:I1");
@@ -112,7 +112,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     }
 
     XLSX.utils.book_append_sheet(wb, ws, "Orçamento Grifo");
-    // Nome do arquivo ajustado
     XLSX.writeFile(wb, "modelo_padrao.xlsx");
 
     toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
@@ -131,7 +130,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
       const formatted: PlaybookItem[] = data
-        .slice(1) // Pula cabeçalho
+        .slice(1)
         .map((row, index) => {
           const valorMaoDeObra = row[4] ? Number(row[4]) : 0;
           const valorMateriais = row[5] ? Number(row[5]) : 0;
@@ -195,6 +194,12 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         };
       }),
     );
+  };
+
+  // Função para deletar uma linha
+  const handleDeleteRow = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Impede que o clique dispare o cycleLevel da linha
+    setRawData((prev) => prev.filter((_, i) => i !== index));
   };
 
   const processedData = useMemo(() => {
@@ -351,6 +356,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                     </div>
                     <div className="text-center space-y-1">
                       <span className="text-lg font-medium text-slate-700">Selecione o arquivo .xlsx</span>
+                      <p className="text-sm text-slate-400">Modelo "modelo_padrao.xlsx" compatível</p>
                     </div>
                   </Label>
                   <Input
@@ -397,6 +403,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                           <TableHead className="w-[100px]">Código</TableHead>
                           <TableHead>Descrição</TableHead>
                           <TableHead className="w-[150px] text-right">Preço Total</TableHead>
+                          <TableHead className="w-[50px] text-center"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -404,7 +411,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                           <TableRow
                             key={idx}
                             className={cn(
-                              "cursor-pointer transition-all select-none",
+                              "cursor-pointer transition-all select-none group",
                               row.nivel === 0
                                 ? "bg-slate-100 font-bold border-l-4 border-l-primary"
                                 : row.nivel === 1
@@ -445,6 +452,16 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs py-2">
                               {formatCurrency(row.precoTotal)}
+                            </TableCell>
+                            <TableCell className="text-center py-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => handleDeleteRow(idx, e)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
