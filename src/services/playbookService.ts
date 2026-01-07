@@ -60,11 +60,8 @@ export const playbookService = {
         preco_unitario: item.preco_unitario || 0,
         preco_total: item.preco_total || 0,
         is_etapa: item.is_etapa || false,
-        is_parent: item.is_parent || false,
         nivel: item.nivel || 2,
         ordem: item.ordem || 0,
-        codigo: item.codigo || "",
-        // Novos campos
         valor_mao_de_obra: item.valor_mao_de_obra || 0,
         valor_materiais: item.valor_materiais || 0,
         valor_equipamentos: item.valor_equipamentos || 0,

@@ -819,6 +819,10 @@ export type Database = {
           data_limite: string | null
           descricao: string
           destino: string | null
+          destino_equipamentos: string | null
+          destino_mao_de_obra: string | null
+          destino_materiais: string | null
+          destino_verbas: string | null
           id: string
           is_etapa: boolean | null
           nivel: number | null
@@ -832,6 +836,10 @@ export type Database = {
           status_contratacao: string | null
           unidade: string | null
           valor_contratado: number | null
+          valor_equipamentos: number | null
+          valor_mao_de_obra: number | null
+          valor_materiais: number | null
+          valor_verbas: number | null
         }
         Insert: {
           contract_url?: string | null
@@ -839,6 +847,10 @@ export type Database = {
           data_limite?: string | null
           descricao: string
           destino?: string | null
+          destino_equipamentos?: string | null
+          destino_mao_de_obra?: string | null
+          destino_materiais?: string | null
+          destino_verbas?: string | null
           id?: string
           is_etapa?: boolean | null
           nivel?: number | null
@@ -852,6 +864,10 @@ export type Database = {
           status_contratacao?: string | null
           unidade?: string | null
           valor_contratado?: number | null
+          valor_equipamentos?: number | null
+          valor_mao_de_obra?: number | null
+          valor_materiais?: number | null
+          valor_verbas?: number | null
         }
         Update: {
           contract_url?: string | null
@@ -859,6 +875,10 @@ export type Database = {
           data_limite?: string | null
           descricao?: string
           destino?: string | null
+          destino_equipamentos?: string | null
+          destino_mao_de_obra?: string | null
+          destino_materiais?: string | null
+          destino_verbas?: string | null
           id?: string
           is_etapa?: boolean | null
           nivel?: number | null
@@ -872,6 +892,10 @@ export type Database = {
           status_contratacao?: string | null
           unidade?: string | null
           valor_contratado?: number | null
+          valor_equipamentos?: number | null
+          valor_mao_de_obra?: number | null
+          valor_materiais?: number | null
+          valor_verbas?: number | null
         }
         Relationships: [
           {
