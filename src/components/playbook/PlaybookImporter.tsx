@@ -356,7 +356,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
                     </div>
                     <div className="text-center space-y-1">
                       <span className="text-lg font-medium text-slate-700">Selecione o arquivo .xlsx</span>
-                      <p className="text-sm text-slate-400">Modelo "modelo_padrao.xlsx" compatível</p>
                     </div>
                   </Label>
                   <Input
