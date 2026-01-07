@@ -2,7 +2,7 @@ import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, LayoutList, ListTree, Minus, ChevronDown, ChevronRight, Settings2, ChevronsUpDown, Maximize2, Minimize2 } from "lucide-react";
+import { Edit2, LayoutList, ListTree, Minus, ChevronDown, ChevronRight, Settings2, ChevronsUpDown, Maximize2, Minimize2, X } from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
 import { playbookService } from "@/services/playbookService";
@@ -85,21 +85,33 @@ const DestinationSelector = memo(function DestinationSelector({
                 <span className="text-xs text-blue-700 font-medium">Mão de Obra</span>
                 <span className="text-[10px] text-slate-500">{formatCurrency(metaMaoDeObra)}</span>
               </div>
-              <Select
-                value={item.destino_mao_de_obra || ""}
-                onValueChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
-              >
-                <SelectTrigger className="h-7 w-32 text-xs">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {destinationOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Select
+                  value={item.destino_mao_de_obra || ""}
+                  onValueChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
+                >
+                  <SelectTrigger className="h-7 w-28 text-xs">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {destinationOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {item.destino_mao_de_obra && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                    onClick={() => onDestinationChange(item.id, "destino_mao_de_obra", "")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           
@@ -109,21 +121,33 @@ const DestinationSelector = memo(function DestinationSelector({
                 <span className="text-xs text-orange-700 font-medium">Materiais</span>
                 <span className="text-[10px] text-slate-500">{formatCurrency(metaMateriais)}</span>
               </div>
-              <Select
-                value={item.destino_materiais || ""}
-                onValueChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
-              >
-                <SelectTrigger className="h-7 w-32 text-xs">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {destinationOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Select
+                  value={item.destino_materiais || ""}
+                  onValueChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
+                >
+                  <SelectTrigger className="h-7 w-28 text-xs">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {destinationOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {item.destino_materiais && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                    onClick={() => onDestinationChange(item.id, "destino_materiais", "")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           
@@ -360,14 +384,17 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
   // Optimistic update handler
   const handleDestinationChange = useCallback(async (itemId: string, field: string, value: string) => {
+    // Convert empty string to null for clearing destinations
+    const dbValue = value === "" ? null : value;
+    
     // Optimistic update - update UI immediately
     if (onOptimisticUpdate) {
       onOptimisticUpdate(itemId, field, value);
     }
 
     try {
-      await playbookService.atualizarItem(itemId, { [field]: value });
-      toast({ title: "Destino atualizado" });
+      await playbookService.atualizarItem(itemId, { [field]: dbValue });
+      toast({ title: dbValue ? "Destino atualizado" : "Destino removido" });
       // Only refetch if no optimistic update was provided
       if (!onOptimisticUpdate) {
         onUpdate();
