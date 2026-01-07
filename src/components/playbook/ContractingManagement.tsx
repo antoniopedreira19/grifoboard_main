@@ -4,7 +4,7 @@ import { PlaybookItem } from "@/types/playbook";
 import { playbookService } from "@/services/playbookService";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Truck, User, Loader2, Edit2, TrendingUp, TrendingDown, Clock, MessageCircle, CheckCircle2, FileCheck } from "lucide-react";
+import { Building2, Truck, User, Loader2, Edit2, Clock, MessageSquare, CheckCircle2, FileCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type DestinationType = "obra_direta" | "fornecimento" | "cliente";
 type StatusContratacao = "a_negociar" | "negociando" | "negociado";
@@ -132,14 +133,38 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     return { totalMeta, totalContratado, itemsNegociados, diferenca, percentual, total: costItems.length };
   };
 
-  // Contagem por status
-  const getStatusCounts = (destination: DestinationType) => {
+  // Resumo financeiro por status
+  const getFinancialSummaryByStatus = (destination: DestinationType) => {
     const costItems = getItemsForDestination(destination);
-    return {
-      a_negociar: costItems.filter(item => item.statusContratacao === "a_negociar" || !item.statusContratacao).length,
-      negociando: costItems.filter(item => item.statusContratacao === "negociando").length,
-      negociado: costItems.filter(item => item.statusContratacao === "negociado").length,
-    };
+    const totalMeta = costItems.reduce((sum, item) => sum + item.valorMeta, 0);
+    const totalContratado = costItems.reduce((sum, item) => sum + (item.valorContratado || 0), 0);
+
+    const statuses: StatusContratacao[] = ["negociado", "negociando", "a_negociar"];
+    const summary = statuses.map((status) => {
+      const itemsStatus = costItems.filter((item) =>
+        status === "a_negociar"
+          ? item.statusContratacao === "a_negociar" || !item.statusContratacao
+          : item.statusContratacao === status
+      );
+      const valorMetaStatus = itemsStatus.reduce((sum, item) => sum + item.valorMeta, 0);
+      const valorContratadoStatus = itemsStatus.reduce((sum, item) => sum + (item.valorContratado || 0), 0);
+      const verbaDisponivel = valorMetaStatus - valorContratadoStatus;
+
+      return {
+        status,
+        valorMeta: valorMetaStatus,
+        percentMeta: totalMeta > 0 ? (valorMetaStatus / totalMeta) * 100 : 0,
+        valorContratado: valorContratadoStatus,
+        percentContratado: totalContratado > 0 ? (valorContratadoStatus / totalContratado) * 100 : 0,
+        verbaDisponivel,
+        percentVerba: valorMetaStatus > 0 ? (1 - valorContratadoStatus / valorMetaStatus) * 100 : 100,
+      };
+    });
+
+    const totalVerba = totalMeta - totalContratado;
+    const percentVerbaTotal = totalMeta > 0 ? (1 - totalContratado / totalMeta) * 100 : 100;
+
+    return { summary, totalMeta, totalContratado, totalVerba, percentVerbaTotal };
   };
 
   const getCounts = () => ({
@@ -187,7 +212,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const getStatusIcon = (status: StatusContratacao) => {
     switch (status) {
       case "a_negociar": return Clock;
-      case "negociando": return MessageCircle;
+      case "negociando": return MessageSquare;
       case "negociado": return FileCheck;
       default: return Clock;
     }
@@ -260,85 +285,72 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // Card de resumo por status
-  const renderStatusSummary = (destination: DestinationType) => {
-    const statusCounts = getStatusCounts(destination);
-    const totals = getDestinationTotals(destination);
+  // Tabela de resumo financeiro por status
+  const renderFinancialSummary = (destination: DestinationType) => {
+    const { summary, totalMeta, totalContratado, totalVerba, percentVerbaTotal } = getFinancialSummaryByStatus(destination);
     
-    if (totals.total === 0) return null;
+    if (totalMeta === 0) return null;
 
-    const isPositive = totals.diferenca < 0;
-    const hasNegociados = totals.itemsNegociados > 0;
+    const getStatusRowStyle = (status: StatusContratacao) => {
+      switch (status) {
+        case "negociado": return "bg-emerald-50/50";
+        case "negociando": return "bg-amber-50/50";
+        case "a_negociar": return "bg-slate-50/50";
+        default: return "";
+      }
+    };
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        {/* Card de Status */}
-        <Card className="border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm">
-          <CardContent className="py-4">
-            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Resumo por Status</h4>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
-                <Clock className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-medium text-slate-700">A Negociar</span>
-                <Badge className="bg-slate-600 text-white text-xs">{statusCounts.a_negociar}</Badge>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                <MessageCircle className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-700">Negociando</span>
-                <Badge className="bg-amber-600 text-white text-xs">{statusCounts.negociando}</Badge>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                <FileCheck className="h-4 w-4 text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-700">Negociado</span>
-                <Badge className="bg-emerald-600 text-white text-xs">{statusCounts.negociado}</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card de Valores */}
-        <Card className="border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm">
-          <CardContent className="py-4">
-            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Resumo Financeiro</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Total Meta</span>
-                <span className="text-sm font-bold text-[#A47528]">{formatCurrency(totals.totalMeta)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Contratado</span>
-                <span className="text-sm font-bold text-slate-900">
-                  {hasNegociados ? formatCurrency(totals.totalContratado) : "—"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Resultado</span>
-                {hasNegociados ? (
-                  <div className="flex items-center gap-1">
-                    {isPositive ? (
-                      <>
-                        <TrendingDown className="h-3 w-3 text-emerald-600" />
-                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
-                          Economia {formatCurrency(Math.abs(totals.diferenca))}
-                        </Badge>
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="h-3 w-3 text-red-600" />
-                        <Badge className="bg-red-100 text-red-700 text-xs">
-                          Acima {formatCurrency(Math.abs(totals.diferenca))}
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-sm text-slate-400">—</span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden mb-4">
+        <Table>
+          <TableHeader className="bg-slate-100">
+            <TableRow>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider">Situação</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Orçado</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Efetivado</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right">Verba Disponível</TableHead>
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-right w-[70px]">%</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {summary.map((row) => (
+              <TableRow key={row.status} className={getStatusRowStyle(row.status)}>
+                <TableCell className="font-semibold text-sm">{getStatusLabel(row.status).toUpperCase()}</TableCell>
+                <TableCell className="text-right text-sm font-medium text-[#A47528]">
+                  {formatCurrency(row.valorMeta)}
+                </TableCell>
+                <TableCell className="text-right text-sm text-slate-600">
+                  {row.percentMeta.toFixed(2)}%
+                </TableCell>
+                <TableCell className="text-right text-sm font-medium">
+                  {row.valorContratado > 0 ? formatCurrency(row.valorContratado) : "—"}
+                </TableCell>
+                <TableCell className="text-right text-sm text-slate-600">
+                  {row.valorContratado > 0 ? `${row.percentContratado.toFixed(2)}%` : "—"}
+                </TableCell>
+                <TableCell className="text-right text-sm font-medium text-emerald-700">
+                  {formatCurrency(row.verbaDisponivel)}
+                </TableCell>
+                <TableCell className="text-right text-sm text-slate-600">
+                  {row.percentVerba.toFixed(2)}%
+                </TableCell>
+              </TableRow>
+            ))}
+            {/* Total Row */}
+            <TableRow className="bg-slate-800 text-white font-bold">
+              <TableCell className="font-bold text-sm">TOTAL</TableCell>
+              <TableCell className="text-right text-sm">{formatCurrency(totalMeta)}</TableCell>
+              <TableCell className="text-right text-sm">100,00%</TableCell>
+              <TableCell className="text-right text-sm">{formatCurrency(totalContratado)}</TableCell>
+              <TableCell className="text-right text-sm">100,00%</TableCell>
+              <TableCell className="text-right text-sm">{formatCurrency(totalVerba)}</TableCell>
+              <TableCell className="text-right text-sm">{percentVerbaTotal.toFixed(2)}%</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Card>
     );
   };
 
@@ -358,30 +370,31 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
 
     return (
       <>
-        {renderStatusSummary(destination)}
+        {renderFinancialSummary(destination)}
         <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="text-xs font-bold">Descrição</TableHead>
-                <TableHead className="text-xs font-bold w-[100px]">Tipo</TableHead>
+                <TableHead className="text-xs font-bold w-[110px]">Tipo</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Valor Meta</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Contratado</TableHead>
                 <TableHead className="text-xs font-bold w-[150px]">Status</TableHead>
-                <TableHead className="text-xs font-bold w-[60px] text-center">Ações</TableHead>
+                <TableHead className="text-xs font-bold w-[80px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {costItems.map((costItem) => {
                 const uniqueKey = `${costItem.itemId}-${costItem.tipo}`;
-                const hasContrato = costItem.statusContratacao === "negociado" && costItem.valorContratado && costItem.valorContratado > 0;
+                const hasContrato = (costItem.statusContratacao === "negociado" || costItem.statusContratacao === "negociando") && costItem.valorContratado && costItem.valorContratado > 0;
                 const StatusIcon = getStatusIcon(costItem.statusContratacao || "a_negociar");
+                const hasObservacao = costItem.observacao && costItem.observacao.trim().length > 0;
 
                 return (
                   <TableRow key={uniqueKey} className="hover:bg-slate-50/50">
                     <TableCell className="text-sm font-medium">{costItem.descricao}</TableCell>
                     <TableCell>
-                      <Badge className={cn("text-[10px]", getTipoColor(costItem.tipo))}>
+                      <Badge className={cn("text-[10px] whitespace-nowrap", getTipoColor(costItem.tipo))}>
                         {getTipoLabel(costItem.tipo)}
                       </Badge>
                     </TableCell>
@@ -416,7 +429,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                           </SelectItem>
                           <SelectItem value="negociando">
                             <div className="flex items-center gap-2">
-                              <MessageCircle className="h-3 w-3 text-amber-600" />
+                              <MessageSquare className="h-3 w-3 text-amber-600" />
                               Negociando
                             </div>
                           </SelectItem>
@@ -430,9 +443,26 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                       </Select>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleOpenEditModal(costItem)}>
-                        <Edit2 className="h-3.5 w-3.5 text-slate-500" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        {hasObservacao && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button size="icon" variant="ghost" className="h-7 w-7">
+                                <MessageSquare className="h-3.5 w-3.5 text-amber-600" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" side="left">
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Observação</h4>
+                                <p className="text-sm text-slate-700">{costItem.observacao}</p>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleOpenEditModal(costItem)}>
+                          <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -532,16 +562,18 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="valor">Valor Contratado</Label>
-                <Input
-                  id="valor"
-                  type="number"
-                  value={editValues.valorContratado}
-                  onChange={(e) => setEditValues(prev => ({ ...prev, valorContratado: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0,00"
-                />
-              </div>
+              {(editValues.statusContratacao === "negociando" || editValues.statusContratacao === "negociado") && (
+                <div className="space-y-2">
+                  <Label htmlFor="valor">Valor Contratado</Label>
+                  <Input
+                    id="valor"
+                    type="number"
+                    value={editValues.valorContratado}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, valorContratado: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0,00"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="obs">Observação</Label>
                 <Textarea
