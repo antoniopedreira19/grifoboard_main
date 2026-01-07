@@ -2,7 +2,7 @@ import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, LayoutList, ListTree, Minus, ChevronDown, ChevronRight, Settings2 } from "lucide-react";
+import { Edit2, LayoutList, ListTree, Minus, ChevronDown, ChevronRight, Settings2, ChevronsUpDown, Maximize2, Minimize2 } from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
 import { playbookService } from "@/services/playbookService";
@@ -44,7 +44,7 @@ const destinationOptions = [
   { value: "cliente", label: "Cliente", color: "bg-emerald-100 text-emerald-800" },
 ];
 
-// Destination selector component for popover
+// Destination selector component for popover - shows META values (original * coefficient)
 const DestinationSelector = memo(function DestinationSelector({
   item,
   onDestinationChange,
@@ -52,8 +52,20 @@ const DestinationSelector = memo(function DestinationSelector({
   item: any;
   onDestinationChange: (itemId: string, field: string, value: string) => void;
 }) {
-  const hasValues = item.valor_mao_de_obra > 0 || item.valor_materiais > 0 || 
-                    item.valor_equipamentos > 0 || item.valor_verbas > 0;
+  // Calculate meta values (original * coefficient ratio)
+  const getMetaValue = useCallback((originalVal: number) => {
+    const precoTotal = item.precoTotal || item.preco_total || 0;
+    if (!precoTotal || precoTotal === 0) return 0;
+    const ratio = (item.precoTotalMeta || 0) / precoTotal;
+    return originalVal * ratio;
+  }, [item.precoTotal, item.preco_total, item.precoTotalMeta]);
+
+  const metaMaoDeObra = getMetaValue(item.valor_mao_de_obra || 0);
+  const metaMateriais = getMetaValue(item.valor_materiais || 0);
+  const metaEquipamentos = getMetaValue(item.valor_equipamentos || 0);
+  const metaVerbas = getMetaValue(item.valor_verbas || 0);
+
+  const hasValues = metaMaoDeObra > 0 || metaMateriais > 0 || metaEquipamentos > 0 || metaVerbas > 0;
   
   if (!hasValues) return null;
 
@@ -65,13 +77,16 @@ const DestinationSelector = memo(function DestinationSelector({
           Destinos
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3 bg-white" align="end">
+      <PopoverContent className="w-80 p-3 bg-white" align="end">
         <div className="space-y-3">
-          <h4 className="font-medium text-sm text-slate-700">Definir destinos</h4>
+          <h4 className="font-medium text-sm text-slate-700">Definir destinos (valores meta)</h4>
           
-          {item.valor_mao_de_obra > 0 && (
+          {metaMaoDeObra > 0 && (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-blue-700 font-medium">Mão de Obra</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-blue-700 font-medium">Mão de Obra</span>
+                <span className="text-[10px] text-slate-500">{formatCurrency(metaMaoDeObra)}</span>
+              </div>
               <Select
                 value={item.destino_mao_de_obra || ""}
                 onValueChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
@@ -90,9 +105,12 @@ const DestinationSelector = memo(function DestinationSelector({
             </div>
           )}
           
-          {item.valor_materiais > 0 && (
+          {metaMateriais > 0 && (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-orange-700 font-medium">Materiais</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-orange-700 font-medium">Materiais</span>
+                <span className="text-[10px] text-slate-500">{formatCurrency(metaMateriais)}</span>
+              </div>
               <Select
                 value={item.destino_materiais || ""}
                 onValueChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
@@ -111,9 +129,12 @@ const DestinationSelector = memo(function DestinationSelector({
             </div>
           )}
           
-          {item.valor_equipamentos > 0 && (
+          {metaEquipamentos > 0 && (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-yellow-700 font-medium">Equipamentos</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-yellow-700 font-medium">Equipamentos</span>
+                <span className="text-[10px] text-slate-500">{formatCurrency(metaEquipamentos)}</span>
+              </div>
               <Select
                 value={item.destino_equipamentos || ""}
                 onValueChange={(v) => onDestinationChange(item.id, "destino_equipamentos", v)}
@@ -132,9 +153,12 @@ const DestinationSelector = memo(function DestinationSelector({
             </div>
           )}
           
-          {item.valor_verbas > 0 && (
+          {metaVerbas > 0 && (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-emerald-700 font-medium">Verbas</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-emerald-700 font-medium">Verbas</span>
+                <span className="text-[10px] text-slate-500">{formatCurrency(metaVerbas)}</span>
+              </div>
               <Select
                 value={item.destino_verbas || ""}
                 onValueChange={(v) => onDestinationChange(item.id, "destino_verbas", v)}
@@ -366,6 +390,11 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
     overscan: 10,
   });
 
+  // Get all collapsible items (nivel 0 or 1)
+  const collapsibleIds = useMemo(() => {
+    return data.filter(item => item.nivel === 0 || item.nivel === 1).map(item => item.id);
+  }, [data]);
+
   const handleToggleCollapse = useCallback((itemId: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev);
@@ -377,6 +406,17 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
       return next;
     });
   }, []);
+
+  const handleExpandAll = useCallback(() => {
+    setCollapsedSections(new Set());
+  }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    setCollapsedSections(new Set(collapsibleIds));
+  }, [collapsibleIds]);
+
+  const isAllExpanded = collapsedSections.size === 0;
+  const isAllCollapsed = collapsibleIds.length > 0 && collapsedSections.size === collapsibleIds.length;
 
   // Optimistic update handler
   const handleDestinationChange = useCallback(async (itemId: string, field: string, value: string) => {
@@ -406,11 +446,38 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
   return (
     <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Expand/Collapse controls */}
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
+        <span className="text-xs text-slate-500">{data.length} itens • {visibleItems.length} visíveis</span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={handleExpandAll}
+            disabled={isAllExpanded}
+          >
+            <Maximize2 className="h-3 w-3" />
+            Expandir Todos
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={handleCollapseAll}
+            disabled={isAllCollapsed}
+          >
+            <Minimize2 className="h-3 w-3" />
+            Recolher Todos
+          </Button>
+        </div>
+      </div>
+
       {/* Scrollable container for header + body */}
       <div 
         ref={parentRef}
         className="overflow-auto playbook-table-scroll"
-        style={{ height: "calc(100vh - 320px)", minHeight: "500px" }}
+        style={{ height: "calc(100vh - 370px)", minHeight: "450px" }}
       >
         {/* Header - inside scroll container for horizontal sync */}
         <div 
