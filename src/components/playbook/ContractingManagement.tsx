@@ -1,18 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlaybookItem } from "@/types/playbook";
 import { playbookService } from "@/services/playbookService";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Truck, User, Loader2, Edit2, Check, X, TrendingUp, TrendingDown, Minus, Target, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, Truck, User, Loader2, Edit2, TrendingUp, TrendingDown, Clock, MessageCircle, CheckCircle2, FileCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type DestinationType = "obra_direta" | "fornecimento" | "cliente";
+type StatusContratacao = "a_negociar" | "negociando" | "negociado";
 
 interface CostItem {
   itemId: string;
@@ -23,6 +28,7 @@ interface CostItem {
   destino: DestinationType;
   valorContratado?: number;
   observacao?: string;
+  statusContratacao?: StatusContratacao;
 }
 
 interface ContractingManagementProps {
@@ -35,12 +41,21 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const [items, setItems] = useState<PlaybookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDestination, setActiveDestination] = useState<DestinationType>("obra_direta");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ valorContratado: number; observacao: string }>({
+  const [configCoef, setConfigCoef] = useState<number>(coeficiente);
+
+  // Modal de edição
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CostItem | null>(null);
+  const [editValues, setEditValues] = useState<{ valorContratado: number; observacao: string; statusContratacao: StatusContratacao }>({
     valorContratado: 0,
     observacao: "",
+    statusContratacao: "a_negociar",
   });
-  const [configCoef, setConfigCoef] = useState<number>(coeficiente);
+
+  // Modal de valor negociado (quando muda status para negociado)
+  const [valorNegociadoModalOpen, setValorNegociadoModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ itemId: string; tipo: string } | null>(null);
+  const [valorNegociado, setValorNegociado] = useState<number>(0);
 
   useEffect(() => {
     loadItems();
@@ -52,7 +67,6 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
       setLoading(true);
       const { config, items: data } = await playbookService.getPlaybook(userSession.obraAtiva.id);
       setItems(data);
-      // Use o coeficiente selecionado da config
       const selectedCoef = config?.coeficiente_selecionado === "2" 
         ? (config?.coeficiente_2 || 0.75)
         : (config?.coeficiente_1 || 0.57);
@@ -72,7 +86,6 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
-  // Agrupa itens por destino de cada tipo de custo - agora com valor meta correto
   const getItemsForDestination = (destination: DestinationType): CostItem[] => {
     const result: CostItem[] = [];
 
@@ -87,6 +100,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           destino: destination,
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
+          statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
         });
       }
       if (item.destino_materiais === destination && item.valor_materiais > 0) {
@@ -99,6 +113,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           destino: destination,
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
+          statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
         });
       }
     });
@@ -106,16 +121,25 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     return result;
   };
 
-  // Calcula totais por destino
   const getDestinationTotals = (destination: DestinationType) => {
     const costItems = getItemsForDestination(destination);
     const totalMeta = costItems.reduce((sum, item) => sum + item.valorMeta, 0);
     const totalContratado = costItems.reduce((sum, item) => sum + (item.valorContratado || 0), 0);
-    const itemsContratados = costItems.filter(item => item.valorContratado && item.valorContratado > 0).length;
+    const itemsNegociados = costItems.filter(item => item.statusContratacao === "negociado").length;
     const diferenca = totalContratado - totalMeta;
     const percentual = totalMeta > 0 ? ((diferenca / totalMeta) * 100) : 0;
     
-    return { totalMeta, totalContratado, itemsContratados, diferenca, percentual, total: costItems.length };
+    return { totalMeta, totalContratado, itemsNegociados, diferenca, percentual, total: costItems.length };
+  };
+
+  // Contagem por status
+  const getStatusCounts = (destination: DestinationType) => {
+    const costItems = getItemsForDestination(destination);
+    return {
+      a_negociar: costItems.filter(item => item.statusContratacao === "a_negociar" || !item.statusContratacao).length,
+      negociando: costItems.filter(item => item.statusContratacao === "negociando").length,
+      negociado: costItems.filter(item => item.statusContratacao === "negociado").length,
+    };
   };
 
   const getCounts = () => ({
@@ -128,130 +152,193 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
 
   const getTipoLabel = (tipo: string) => {
     switch (tipo) {
-      case "mao_de_obra":
-        return "Mão de Obra";
-      case "materiais":
-        return "Materiais";
-      default:
-        return tipo;
+      case "mao_de_obra": return "Mão de Obra";
+      case "materiais": return "Materiais";
+      default: return tipo;
     }
   };
 
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
-      case "mao_de_obra":
-        return "bg-blue-100 text-blue-800";
-      case "materiais":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-slate-100 text-slate-800";
+      case "mao_de_obra": return "bg-blue-100 text-blue-800";
+      case "materiais": return "bg-orange-100 text-orange-800";
+      default: return "bg-slate-100 text-slate-800";
     }
   };
 
-  // Determina o status da contratação
-  const getContractStatus = (valorMeta: number, valorContratado?: number) => {
-    if (!valorContratado || valorContratado === 0) {
-      return { status: "pendente", label: "Pendente", color: "bg-slate-100 text-slate-600", icon: Target };
-    }
-    
-    const diferenca = valorContratado - valorMeta;
-    const percentual = (diferenca / valorMeta) * 100;
-    
-    if (percentual <= -5) {
-      // Contratou abaixo da meta (ótimo)
-      return { status: "otimo", label: "Abaixo da Meta", color: "bg-emerald-100 text-emerald-800", icon: CheckCircle2 };
-    } else if (percentual >= 5) {
-      // Contratou acima da meta (ruim)
-      return { status: "ruim", label: "Acima da Meta", color: "bg-red-100 text-red-800", icon: XCircle };
-    } else {
-      // Dentro da margem (bom)
-      return { status: "bom", label: "Na Meta", color: "bg-amber-100 text-amber-800", icon: CheckCircle2 };
+  const getStatusLabel = (status: StatusContratacao) => {
+    switch (status) {
+      case "a_negociar": return "A Negociar";
+      case "negociando": return "Negociando";
+      case "negociado": return "Negociado";
+      default: return "A Negociar";
     }
   };
 
-  const handleStartEdit = (costItem: CostItem) => {
-    setEditingId(`${costItem.itemId}-${costItem.tipo}`);
+  const getStatusColor = (status: StatusContratacao) => {
+    switch (status) {
+      case "a_negociar": return "bg-slate-100 text-slate-600";
+      case "negociando": return "bg-amber-100 text-amber-700";
+      case "negociado": return "bg-emerald-100 text-emerald-700";
+      default: return "bg-slate-100 text-slate-600";
+    }
+  };
+
+  const getStatusIcon = (status: StatusContratacao) => {
+    switch (status) {
+      case "a_negociar": return Clock;
+      case "negociando": return MessageCircle;
+      case "negociado": return FileCheck;
+      default: return Clock;
+    }
+  };
+
+  // Abrir modal de edição
+  const handleOpenEditModal = (costItem: CostItem) => {
+    setEditingItem(costItem);
     setEditValues({
       valorContratado: costItem.valorContratado || 0,
       observacao: costItem.observacao || "",
+      statusContratacao: costItem.statusContratacao || "a_negociar",
     });
+    setEditModalOpen(true);
   };
 
-  const handleSaveEdit = async (itemId: string) => {
+  // Salvar edição
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
     try {
-      await playbookService.atualizarItem(itemId, {
+      await playbookService.atualizarItem(editingItem.itemId, {
         valor_contratado: editValues.valorContratado,
         observacao: editValues.observacao,
+        status_contratacao: editValues.statusContratacao,
       });
       toast({ title: "Salvo com sucesso" });
-      setEditingId(null);
+      setEditModalOpen(false);
+      setEditingItem(null);
       loadItems();
     } catch (error) {
       toast({ title: "Erro ao salvar", variant: "destructive" });
     }
   };
 
-  // Card de resumo para cada destino
-  const renderSummaryCard = (destination: DestinationType) => {
+  // Mudar status direto na tabela
+  const handleStatusChange = async (costItem: CostItem, newStatus: StatusContratacao) => {
+    if (newStatus === "negociado") {
+      // Abre modal para pedir valor negociado
+      setPendingStatusChange({ itemId: costItem.itemId, tipo: costItem.tipo });
+      setValorNegociado(costItem.valorContratado || costItem.valorMeta);
+      setValorNegociadoModalOpen(true);
+    } else {
+      // Atualiza direto
+      try {
+        await playbookService.atualizarItem(costItem.itemId, {
+          status_contratacao: newStatus,
+        });
+        toast({ title: "Status atualizado" });
+        loadItems();
+      } catch (error) {
+        toast({ title: "Erro ao atualizar status", variant: "destructive" });
+      }
+    }
+  };
+
+  // Confirmar valor negociado
+  const handleConfirmNegociado = async () => {
+    if (!pendingStatusChange) return;
+    try {
+      await playbookService.atualizarItem(pendingStatusChange.itemId, {
+        status_contratacao: "negociado",
+        valor_contratado: valorNegociado,
+      });
+      toast({ title: "Contrato fechado com sucesso!" });
+      setValorNegociadoModalOpen(false);
+      setPendingStatusChange(null);
+      loadItems();
+    } catch (error) {
+      toast({ title: "Erro ao salvar", variant: "destructive" });
+    }
+  };
+
+  // Card de resumo por status
+  const renderStatusSummary = (destination: DestinationType) => {
+    const statusCounts = getStatusCounts(destination);
     const totals = getDestinationTotals(destination);
+    
     if (totals.total === 0) return null;
 
     const isPositive = totals.diferenca < 0;
-    const isNeutral = totals.itemsContratados === 0;
+    const hasNegociados = totals.itemsNegociados > 0;
 
     return (
-      <Card className="border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm mb-4">
-        <CardContent className="py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Total Meta</span>
-              <span className="text-lg font-bold text-slate-900">{formatCurrency(totals.totalMeta)}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Total Contratado</span>
-              <span className="text-lg font-bold text-slate-900">
-                {totals.itemsContratados > 0 ? formatCurrency(totals.totalContratado) : "—"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Diferença</span>
-              <div className="flex items-center gap-1">
-                {!isNeutral && (
-                  <>
-                    {isPositive ? (
-                      <TrendingDown className="h-4 w-4 text-emerald-600" />
-                    ) : (
-                      <TrendingUp className="h-4 w-4 text-red-600" />
-                    )}
-                    <span className={cn(
-                      "text-lg font-bold",
-                      isPositive ? "text-emerald-600" : "text-red-600"
-                    )}>
-                      {formatCurrency(Math.abs(totals.diferenca))}
-                    </span>
-                  </>
-                )}
-                {isNeutral && <span className="text-lg font-bold text-slate-400">—</span>}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Card de Status */}
+        <Card className="border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm">
+          <CardContent className="py-4">
+            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Resumo por Status</h4>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                <Clock className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-medium text-slate-700">A Negociar</span>
+                <Badge className="bg-slate-600 text-white text-xs">{statusCounts.a_negociar}</Badge>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <MessageCircle className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-700">Negociando</span>
+                <Badge className="bg-amber-600 text-white text-xs">{statusCounts.negociando}</Badge>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                <FileCheck className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-700">Negociado</span>
+                <Badge className="bg-emerald-600 text-white text-xs">{statusCounts.negociado}</Badge>
               </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Status</span>
-              {!isNeutral ? (
-                <Badge className={cn(
-                  "w-fit mt-1",
-                  isPositive ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
-                )}>
-                  {isPositive ? "Economia" : "Acima do Meta"} ({Math.abs(totals.percentual).toFixed(1)}%)
-                </Badge>
-              ) : (
-                <Badge className="w-fit mt-1 bg-slate-100 text-slate-600">
-                  {totals.itemsContratados}/{totals.total} contratados
-                </Badge>
-              )}
+          </CardContent>
+        </Card>
+
+        {/* Card de Valores */}
+        <Card className="border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm">
+          <CardContent className="py-4">
+            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Resumo Financeiro</h4>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Total Meta</span>
+                <span className="text-sm font-bold text-[#A47528]">{formatCurrency(totals.totalMeta)}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Contratado</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {hasNegociados ? formatCurrency(totals.totalContratado) : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Resultado</span>
+                {hasNegociados ? (
+                  <div className="flex items-center gap-1">
+                    {isPositive ? (
+                      <>
+                        <TrendingDown className="h-3 w-3 text-emerald-600" />
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
+                          Economia {formatCurrency(Math.abs(totals.diferenca))}
+                        </Badge>
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="h-3 w-3 text-red-600" />
+                        <Badge className="bg-red-100 text-red-700 text-xs">
+                          Acima {formatCurrency(Math.abs(totals.diferenca))}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-slate-400">—</span>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
@@ -271,7 +358,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
 
     return (
       <>
-        {renderSummaryCard(destination)}
+        {renderStatusSummary(destination)}
         <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
@@ -280,20 +367,15 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                 <TableHead className="text-xs font-bold w-[100px]">Tipo</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Valor Meta</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Contratado</TableHead>
-                <TableHead className="text-xs font-bold text-right w-[120px]">Diferença</TableHead>
-                <TableHead className="text-xs font-bold w-[120px]">Status</TableHead>
-                <TableHead className="text-xs font-bold w-[150px]">Observação</TableHead>
+                <TableHead className="text-xs font-bold w-[150px]">Status</TableHead>
                 <TableHead className="text-xs font-bold w-[60px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {costItems.map((costItem) => {
                 const uniqueKey = `${costItem.itemId}-${costItem.tipo}`;
-                const isEditing = editingId === uniqueKey;
-                const contractStatus = getContractStatus(costItem.valorMeta, costItem.valorContratado);
-                const diferenca = (costItem.valorContratado || 0) - costItem.valorMeta;
-                const hasContrato = costItem.valorContratado && costItem.valorContratado > 0;
-                const StatusIcon = contractStatus.icon;
+                const hasContrato = costItem.statusContratacao === "negociado" && costItem.valorContratado && costItem.valorContratado > 0;
+                const StatusIcon = getStatusIcon(costItem.statusContratacao || "a_negociar");
 
                 return (
                   <TableRow key={uniqueKey} className="hover:bg-slate-50/50">
@@ -307,72 +389,50 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                       {formatCurrency(costItem.valorMeta)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={editValues.valorContratado}
-                          onChange={(e) => setEditValues((prev) => ({ ...prev, valorContratado: parseFloat(e.target.value) || 0 }))}
-                          className="h-7 text-sm w-28"
-                        />
-                      ) : (
-                        <span className="text-sm font-medium">
-                          {hasContrato ? formatCurrency(costItem.valorContratado!) : "—"}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasContrato && (
-                        <div className="flex items-center justify-end gap-1">
-                          {diferenca < 0 ? (
-                            <TrendingDown className="h-3 w-3 text-emerald-600" />
-                          ) : diferenca > 0 ? (
-                            <TrendingUp className="h-3 w-3 text-red-600" />
-                          ) : (
-                            <Minus className="h-3 w-3 text-slate-400" />
-                          )}
-                          <span className={cn(
-                            "text-xs font-medium",
-                            diferenca < 0 ? "text-emerald-600" : diferenca > 0 ? "text-red-600" : "text-slate-500"
-                          )}>
-                            {formatCurrency(Math.abs(diferenca))}
-                          </span>
-                        </div>
-                      )}
-                      {!hasContrato && <span className="text-xs text-slate-400">—</span>}
+                      <span className="text-sm font-medium">
+                        {hasContrato ? formatCurrency(costItem.valorContratado!) : "—"}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn("text-[10px] gap-1", contractStatus.color)}>
-                        <StatusIcon className="h-3 w-3" />
-                        {contractStatus.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={editValues.observacao}
-                          onChange={(e) => setEditValues((prev) => ({ ...prev, observacao: e.target.value }))}
-                          className="h-7 text-sm"
-                          placeholder="Observação..."
-                        />
-                      ) : (
-                        <span className="text-xs text-slate-500 line-clamp-1">{costItem.observacao || "—"}</span>
-                      )}
+                      <Select 
+                        value={costItem.statusContratacao || "a_negociar"} 
+                        onValueChange={(v) => handleStatusChange(costItem, v as StatusContratacao)}
+                      >
+                        <SelectTrigger className={cn(
+                          "h-8 w-[140px] text-xs font-medium border-0",
+                          getStatusColor(costItem.statusContratacao || "a_negociar")
+                        )}>
+                          <div className="flex items-center gap-1.5">
+                            <StatusIcon className="h-3 w-3" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="a_negociar">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3 w-3 text-slate-500" />
+                              A Negociar
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="negociando">
+                            <div className="flex items-center gap-2">
+                              <MessageCircle className="h-3 w-3 text-amber-600" />
+                              Negociando
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="negociado">
+                            <div className="flex items-center gap-2">
+                              <FileCheck className="h-3 w-3 text-emerald-600" />
+                              Negociado
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-center">
-                      {isEditing ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveEdit(costItem.itemId)}>
-                            <Check className="h-3 w-3 text-green-600" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingId(null)}>
-                            <X className="h-3 w-3 text-red-600" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleStartEdit(costItem)}>
-                          <Edit2 className="h-3 w-3 text-slate-400" />
-                        </Button>
-                      )}
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleOpenEditModal(costItem)}>
+                        <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -397,7 +457,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Farol de Contratações</h2>
-        <p className="text-slate-600">Acompanhe os valores contratados vs meta e identifique oportunidades.</p>
+        <p className="text-slate-600">Acompanhe o status das negociações e valores contratados.</p>
       </div>
 
       <Tabs value={activeDestination} onValueChange={(v) => setActiveDestination(v as DestinationType)}>
@@ -431,6 +491,114 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Modal de Edição */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Item</DialogTitle>
+          </DialogHeader>
+          {editingItem && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Descrição</Label>
+                <p className="text-sm font-medium">{editingItem.descricao}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Tipo</Label>
+                  <Badge className={cn("text-xs", getTipoColor(editingItem.tipo))}>
+                    {getTipoLabel(editingItem.tipo)}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Valor Meta</Label>
+                  <p className="text-sm font-bold text-[#A47528]">{formatCurrency(editingItem.valorMeta)}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select 
+                  value={editValues.statusContratacao} 
+                  onValueChange={(v) => setEditValues(prev => ({ ...prev, statusContratacao: v as StatusContratacao }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a_negociar">A Negociar</SelectItem>
+                    <SelectItem value="negociando">Negociando</SelectItem>
+                    <SelectItem value="negociado">Negociado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor">Valor Contratado</Label>
+                <Input
+                  id="valor"
+                  type="number"
+                  value={editValues.valorContratado}
+                  onChange={(e) => setEditValues(prev => ({ ...prev, valorContratado: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="obs">Observação</Label>
+                <Textarea
+                  id="obs"
+                  value={editValues.observacao}
+                  onChange={(e) => setEditValues(prev => ({ ...prev, observacao: e.target.value }))}
+                  placeholder="Adicione uma observação..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} className="bg-[#A47528] hover:bg-[#8B6320]">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Valor Negociado */}
+      <Dialog open={valorNegociadoModalOpen} onOpenChange={setValorNegociadoModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Fechar Contrato
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-600">
+              Informe o valor final negociado para este item.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="valorNegociado">Valor Negociado</Label>
+              <Input
+                id="valorNegociado"
+                type="number"
+                value={valorNegociado}
+                onChange={(e) => setValorNegociado(parseFloat(e.target.value) || 0)}
+                placeholder="0,00"
+                className="text-lg font-medium"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setValorNegociadoModalOpen(false);
+              setPendingStatusChange(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmNegociado} className="bg-emerald-600 hover:bg-emerald-700">
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
