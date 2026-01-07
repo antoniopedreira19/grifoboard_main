@@ -24,10 +24,6 @@ import {
   ListTree,
   Minus,
   Info,
-  HardHat,
-  Hammer,
-  Construction,
-  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,10 +33,10 @@ import { useAuth } from "@/context/AuthContext";
 import { playbookService } from "@/services/playbookService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Interface interna do componente atualizada
+// Interface interna do componente para manipulação do estado (CSV)
 interface PlaybookItem {
   id: number;
-  codigo: string; // Nova coluna baseada no CSV
+  codigo: string;
   descricao: string;
   unidade: string;
   qtd: number;
@@ -51,6 +47,13 @@ interface PlaybookItem {
   valorVerbas: number;
   // Totais
   precoTotal: number;
+  // Campos calculados (Meta)
+  metaMO?: number;
+  metaMat?: number;
+  metaEquip?: number;
+  metaVerb?: number;
+  precoTotalMeta?: number;
+
   nivel: 0 | 1 | 2; // 0=Principal, 1=Subetapa, 2=Item
   isEtapa: boolean;
 }
@@ -75,7 +78,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    // Cabeçalhos exatos solicitados
     const headers = [
       "Código",
       "Descrição",
@@ -131,9 +133,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
-      // Mapeamento baseado no CSV "TESTE ANTONIO"
-      // Col 0: Código | Col 1: Descrição | Col 2: Unidade | Col 3: Qtd
-      // Col 4: MO | Col 5: Mat | Col 6: Equip | Col 7: Verbas | Col 8: Total
       const formatted: PlaybookItem[] = data
         .slice(1) // Pula cabeçalho
         .map((row, index) => {
@@ -164,18 +163,15 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         .filter((item) => item.descricao !== "" || item.codigo !== "");
 
       // Detecção Automática de Nível baseada no CSV
-      // Itens com QTD vazia ou 0 são considerados cabeçalhos (Etapas)
       const autoDetected = formatted.map((item) => {
         const isHeader = !item.qtd || item.qtd === 0;
-
-        // Tenta inferir nível pelo código (ex: "01" = nv0, "01.001" = nv1) se for header
         let nivel: 0 | 1 | 2 = 2;
 
         if (isHeader) {
           const dots = (item.codigo.match(/\./g) || []).length;
           if (dots === 0) nivel = 0;
           else if (dots === 1) nivel = 1;
-          else nivel = 1; // Fallback para subetapa
+          else nivel = 1; // Fallback
         } else {
           nivel = 2;
         }
@@ -214,7 +210,6 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     let grandTotalOriginal = 0;
 
     const hierarchyData = rawData.map((item) => {
-      // Aplica o coeficiente em cada componente para gerar a Meta
       const metaMO = item.valorMaoDeObra * validCoef;
       const metaMat = item.valorMateriais * validCoef;
       const metaEquip = item.valorEquipamentos * validCoef;
@@ -238,7 +233,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
     const finalData = hierarchyData.map((item) => ({
       ...item,
-      porcentagem: grandTotalMeta > 0 && item.nivel === 2 ? (item.precoTotalMeta / grandTotalMeta) * 100 : 0,
+      porcentagem: grandTotalMeta > 0 && item.nivel === 2 ? ((item.precoTotalMeta || 0) / grandTotalMeta) * 100 : 0,
     }));
 
     return { items: finalData, grandTotalMeta, grandTotalOriginal };
@@ -257,16 +252,21 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         codigo: item.codigo,
         descricao: item.descricao,
         unidade: item.unidade,
-        quantidade_orcada: item.qtd,
-        // Salvando os 4 novos valores
+        qtd: item.qtd, // CORREÇÃO: Usando 'qtd' para compatibilidade com o banco/serviço
+
+        // Novos campos
         valor_mao_de_obra: item.valorMaoDeObra,
         valor_materiais: item.valorMateriais,
         valor_equipamentos: item.valorEquipamentos,
         valor_verbas: item.valorVerbas,
         preco_total: item.precoTotal,
+
         is_etapa: item.nivel !== 2,
         nivel: item.nivel,
         ordem: index,
+
+        // Campos legados para garantir compatibilidade se necessário
+        preco_unitario: 0,
       }));
 
       const configToSave = {
@@ -276,7 +276,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         coeficiente_selecionado: selectedCoef as "1" | "2",
       };
 
-      await playbookService.savePlaybook(obraId, configToSave, itemsToSave);
+      // Cast 'as any' para evitar erros de tipagem estrita durante a migração
+      await playbookService.savePlaybook(obraId, configToSave, itemsToSave as any);
 
       toast({
         title: "Playbook Salvo!",
@@ -298,8 +299,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     }
   };
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+  const formatCurrency = (val: number | undefined) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val || 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

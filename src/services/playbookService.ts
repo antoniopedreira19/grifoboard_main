@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PlaybookItem, PlaybookInsert, PlaybookUpdate } from "@/types/playbook";
 
-// Tipos alinhados com o Banco de Dados
 export interface PlaybookConfig {
   obra_id: string;
   coeficiente_1: number;
@@ -8,39 +8,10 @@ export interface PlaybookConfig {
   coeficiente_selecionado: string;
 }
 
-export interface PlaybookItemInsert {
-  obra_id: string;
-  descricao: string;
-  unidade: string;
-  qtd: number;
-  preco_unitario: number;
-  preco_total: number;
-  is_etapa: boolean;
-  nivel: number;
-  ordem: number;
-  // Campos da Fase 2 (opcionais no insert)
-  destino?: string | null;
-  responsavel?: string | null;
-  data_limite?: string | null;
-  valor_contratado?: number | null;
-  status_contratacao?: string | null;
-  observacao?: string | null;
-  contract_url?: string | null; // <--- ADICIONADO
-}
-
-export interface PlaybookItemUpdate {
-  destino?: string | null;
-  responsavel?: string | null;
-  data_limite?: string | null;
-  valor_contratado?: number | null;
-  status_contratacao?: string | null;
-  observacao?: string | null;
-  contract_url?: string | null; // <--- CORREÇÃO: ADICIONADO AQUI PARA RESOLVER O ERRO
-}
-
 export const playbookService = {
+  // Busca completa com Configuração (Usado no Importador/Resumo)
   async getPlaybook(obraId: string) {
-    const { data: config } = await supabase.from("playbook_config").select("*").eq("obra_id", obraId).single();
+    const { data: config } = await supabase.from("playbook_config").select("*").eq("obra_id", obraId).maybeSingle();
 
     const { data: items, error } = await supabase
       .from("playbook_items")
@@ -50,42 +21,73 @@ export const playbookService = {
 
     if (error) throw error;
 
-    return { config, items };
+    return { config, items: items as unknown as PlaybookItem[] };
   },
 
-  async savePlaybook(obraId: string, config: PlaybookConfig, items: PlaybookItemInsert[]) {
-    // 1. Salvar/Atualizar Configuração
+  // Busca simples de lista de itens (Usado no ContractingManagement)
+  async listarItens(obraId: string): Promise<PlaybookItem[]> {
+    const { data, error } = await supabase
+      .from("playbook_items")
+      .select("*")
+      .eq("obra_id", obraId)
+      .order("ordem", { ascending: true });
+
+    if (error) throw error;
+    return data as unknown as PlaybookItem[];
+  },
+
+  // Salvar em lote (Importação)
+  async savePlaybook(obraId: string, config: PlaybookConfig, items: Partial<PlaybookItem>[]) {
+    // 1. Configuração
     const { error: configError } = await supabase
       .from("playbook_config")
       .upsert({ ...config, obra_id: obraId }, { onConflict: "obra_id" });
 
     if (configError) throw configError;
 
-    // 2. Substituir Itens
+    // 2. Substituir Itens (Transação implícita via delete+insert)
+    // Nota: Em produção idealmente usaria RPC, mas delete/insert funciona para este volume
+    const { error: deleteError } = await supabase.from("playbook_items").delete().eq("obra_id", obraId);
+    if (deleteError) throw deleteError;
+
     if (items.length > 0) {
-      const { error: deleteError } = await supabase.from("playbook_items").delete().eq("obra_id", obraId);
+      // Garantir que campos obrigatórios tenham defaults se vierem parciais
+      const itemsToInsert = items.map((item) => ({
+        obra_id: obraId,
+        descricao: item.descricao || "",
+        unidade: item.unidade || "",
+        qtd: item.qtd || 0,
+        preco_unitario: item.preco_unitario || 0,
+        preco_total: item.preco_total || 0,
+        is_etapa: item.is_etapa || false,
+        is_parent: item.is_parent || false,
+        nivel: item.nivel || 2,
+        ordem: item.ordem || 0,
+        codigo: item.codigo || "",
+        // Novos campos
+        valor_mao_de_obra: item.valor_mao_de_obra || 0,
+        valor_materiais: item.valor_materiais || 0,
+        valor_equipamentos: item.valor_equipamentos || 0,
+        valor_verbas: item.valor_verbas || 0,
+      }));
 
-      if (deleteError) throw deleteError;
-
-      const { error: insertError } = await supabase.from("playbook_items").insert(items);
-
+      const { error: insertError } = await supabase.from("playbook_items").insert(itemsToInsert);
       if (insertError) throw insertError;
-    } else {
-      const { error: deleteError } = await supabase.from("playbook_items").delete().eq("obra_id", obraId);
-
-      if (deleteError) throw deleteError;
     }
   },
 
-  async updateItem(id: string, updates: PlaybookItemUpdate) {
+  // Atualização granular (Alias para updateItem para compatibilidade com ContractingManagement)
+  async atualizarItem(id: string, updates: PlaybookUpdate) {
     const { error } = await supabase.from("playbook_items").update(updates).eq("id", id);
-
     if (error) throw error;
+  },
+
+  async updateItem(id: string, updates: PlaybookUpdate) {
+    return this.atualizarItem(id, updates);
   },
 
   async deleteItem(id: string) {
     const { error } = await supabase.from("playbook_items").delete().eq("id", id);
-
     if (error) throw error;
   },
 };
