@@ -2,23 +2,23 @@ import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, LayoutList, ListTree, Minus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Edit2, LayoutList, ListTree, Minus, ChevronDown, ChevronRight, Settings2 } from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
 import { playbookService } from "@/services/playbookService";
 import { useToast } from "@/hooks/use-toast";
-import { LazyDestinationSelect } from "./LazyDestinationSelect";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface VirtualizedPlaybookTableProps {
   data: PlaybookItem[];
@@ -38,6 +38,126 @@ const formatCurrency = (val: number | undefined | null) => {
   }).format(val || 0);
 };
 
+const destinationOptions = [
+  { value: "obra_direta", label: "Obra Direta", color: "bg-blue-100 text-blue-800" },
+  { value: "fornecimento", label: "Fornecimento", color: "bg-orange-100 text-orange-800" },
+  { value: "cliente", label: "Cliente", color: "bg-emerald-100 text-emerald-800" },
+];
+
+// Destination selector component for popover
+const DestinationSelector = memo(function DestinationSelector({
+  item,
+  onDestinationChange,
+}: {
+  item: any;
+  onDestinationChange: (itemId: string, field: string, value: string) => void;
+}) {
+  const hasValues = item.valor_mao_de_obra > 0 || item.valor_materiais > 0 || 
+                    item.valor_equipamentos > 0 || item.valor_verbas > 0;
+  
+  if (!hasValues) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1">
+          <Settings2 className="h-3 w-3" />
+          Destinos
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-3 bg-white" align="end">
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm text-slate-700">Definir destinos</h4>
+          
+          {item.valor_mao_de_obra > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-blue-700 font-medium">Mão de Obra</span>
+              <Select
+                value={item.destino_mao_de_obra || ""}
+                onValueChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
+              >
+                <SelectTrigger className="h-7 w-32 text-xs">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {destinationOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {item.valor_materiais > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-orange-700 font-medium">Materiais</span>
+              <Select
+                value={item.destino_materiais || ""}
+                onValueChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
+              >
+                <SelectTrigger className="h-7 w-32 text-xs">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {destinationOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {item.valor_equipamentos > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-yellow-700 font-medium">Equipamentos</span>
+              <Select
+                value={item.destino_equipamentos || ""}
+                onValueChange={(v) => onDestinationChange(item.id, "destino_equipamentos", v)}
+              >
+                <SelectTrigger className="h-7 w-32 text-xs">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {destinationOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {item.valor_verbas > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-emerald-700 font-medium">Verbas</span>
+              <Select
+                value={item.destino_verbas || ""}
+                onValueChange={(v) => onDestinationChange(item.id, "destino_verbas", v)}
+              >
+                <SelectTrigger className="h-7 w-32 text-xs">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {destinationOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+});
+
 // Memoized row component
 const PlaybookRow = memo(function PlaybookRow({
   item,
@@ -45,7 +165,6 @@ const PlaybookRow = memo(function PlaybookRow({
   isCollapsed,
   onToggleCollapse,
   onDestinationChange,
-  onDelete,
   onEdit,
   readOnly,
 }: {
@@ -54,11 +173,9 @@ const PlaybookRow = memo(function PlaybookRow({
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onDestinationChange: (itemId: string, field: string, value: string) => void;
-  onDelete: (id: string) => void;
   onEdit?: (item: PlaybookItem) => void;
   readOnly?: boolean;
 }) {
-  const isParent = item.nivel === 0 || item.nivel === 1;
   const percentage = useMemo(() => {
     const total = item.precoTotal || item.preco_total || 0;
     if (grandTotalOriginal === 0) return 0;
@@ -66,12 +183,6 @@ const PlaybookRow = memo(function PlaybookRow({
   }, [item.precoTotal, item.preco_total, grandTotalOriginal]);
   
   const isHighPercentage = percentage > 2;
-
-  const getMetaValue = useCallback((originalVal: number) => {
-    if (!item.precoTotal || item.precoTotal === 0) return 0;
-    const ratio = (item.precoTotalMeta || 0) / item.precoTotal;
-    return originalVal * ratio;
-  }, [item.precoTotal, item.precoTotalMeta]);
 
   return (
     <div
@@ -113,7 +224,7 @@ const PlaybookRow = memo(function PlaybookRow({
       </div>
 
       {/* Descrição */}
-      <div className="w-[250px] py-2 flex-shrink-0">
+      <div className="w-[280px] py-2 flex-shrink-0">
         <div
           className={cn(
             "flex items-start gap-2 text-sm",
@@ -133,17 +244,51 @@ const PlaybookRow = memo(function PlaybookRow({
       </div>
 
       {/* Unidade */}
-      <div className="w-[50px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
+      <div className="w-[60px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
         {item.unidade}
       </div>
 
       {/* Qtd */}
-      <div className="w-[50px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
+      <div className="w-[60px] flex items-center justify-center text-xs text-slate-500 py-2 flex-shrink-0">
         {item.qtd}
       </div>
 
-      {/* % */}
-      <div className="w-[60px] flex items-center justify-center py-2 flex-shrink-0">
+      {/* Mão de Obra */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-blue-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">
+          {formatCurrency(item.valor_mao_de_obra)}
+        </span>
+      </div>
+
+      {/* Materiais */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-orange-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
+      </div>
+
+      {/* Equipamentos */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-yellow-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">
+          {formatCurrency(item.valor_equipamentos)}
+        </span>
+      </div>
+
+      {/* Verbas */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-emerald-50/20 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
+      </div>
+
+      {/* Total Original */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
+        {formatCurrency(item.precoTotal || item.preco_total)}
+      </div>
+
+      {/* Total Meta */}
+      <div className="w-[120px] flex items-center justify-end py-2 px-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5 flex-shrink-0">
+        {formatCurrency(item.precoTotalMeta)}
+      </div>
+
+      {/* % - após Total Meta */}
+      <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
         <span
           className={cn(
             "text-xs font-medium px-1.5 py-0.5 rounded",
@@ -154,115 +299,17 @@ const PlaybookRow = memo(function PlaybookRow({
         </span>
       </div>
 
-      {/* Mão de Obra */}
-      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-blue-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">
-          {formatCurrency(item.valor_mao_de_obra)}
-        </span>
-        {item.nivel === 2 && (
-          <span className="text-[10px] text-blue-600">
-            {formatCurrency(getMetaValue(item.valor_mao_de_obra))}
-          </span>
-        )}
-        {item.nivel === 2 && item.valor_mao_de_obra > 0 && (
-          <LazyDestinationSelect
-            value={item.destino_mao_de_obra}
-            onChange={(v) => onDestinationChange(item.id, "destino_mao_de_obra", v)}
-          />
-        )}
-      </div>
-
-      {/* Materiais */}
-      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-orange-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
-        {item.nivel === 2 && (
-          <span className="text-[10px] text-orange-600">
-            {formatCurrency(getMetaValue(item.valor_materiais))}
-          </span>
-        )}
-        {item.nivel === 2 && item.valor_materiais > 0 && (
-          <LazyDestinationSelect
-            value={item.destino_materiais}
-            onChange={(v) => onDestinationChange(item.id, "destino_materiais", v)}
-          />
-        )}
-      </div>
-
-      {/* Equipamentos */}
-      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-yellow-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">
-          {formatCurrency(item.valor_equipamentos)}
-        </span>
-        {item.nivel === 2 && (
-          <span className="text-[10px] text-yellow-600">
-            {formatCurrency(getMetaValue(item.valor_equipamentos))}
-          </span>
-        )}
-        {item.nivel === 2 && item.valor_equipamentos > 0 && (
-          <LazyDestinationSelect
-            value={item.destino_equipamentos}
-            onChange={(v) => onDestinationChange(item.id, "destino_equipamentos", v)}
-          />
-        )}
-      </div>
-
-      {/* Verbas */}
-      <div className="w-[130px] flex flex-col items-end justify-center py-2 px-2 bg-emerald-50/20 flex-shrink-0">
-        <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
-        {item.nivel === 2 && (
-          <span className="text-[10px] text-emerald-600">
-            {formatCurrency(getMetaValue(item.valor_verbas))}
-          </span>
-        )}
-        {item.nivel === 2 && item.valor_verbas > 0 && (
-          <LazyDestinationSelect
-            value={item.destino_verbas}
-            onChange={(v) => onDestinationChange(item.id, "destino_verbas", v)}
-          />
-        )}
-      </div>
-
-      {/* Total Original */}
-      <div className="w-[110px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
-        {formatCurrency(item.precoTotal || item.preco_total)}
-      </div>
-
-      {/* Total Meta */}
-      <div className="w-[110px] flex items-center justify-end py-2 px-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5 flex-shrink-0">
-        {formatCurrency(item.precoTotalMeta)}
-      </div>
-
-      {/* Ações */}
+      {/* Ações - Apenas editar e destinos */}
       {!readOnly && (
-        <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
-          <div className="flex items-center gap-1">
-            {onEdit && (
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(item)}>
-                <Edit2 className="h-3 w-3 text-slate-400" />
-              </Button>
-            )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-red-600">
-                  <Trash2 className="h-3 w-3 text-slate-400" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir item?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(item.id)} className="bg-red-600">
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+        <div className="w-[100px] flex items-center justify-center gap-1 py-2 flex-shrink-0">
+          {onEdit && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(item)}>
+              <Edit2 className="h-3 w-3 text-slate-400" />
+            </Button>
+          )}
+          {item.nivel === 2 && (
+            <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
+          )}
         </div>
       )}
     </div>
@@ -288,7 +335,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
     const result: typeof data = [];
     let skipUntilLevel: number | null = null;
-    let skipParentId: string | null = null;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
@@ -297,7 +343,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
       // If we're skipping and this item is at a level <= skipUntilLevel, stop skipping
       if (skipUntilLevel !== null && nivel <= skipUntilLevel) {
         skipUntilLevel = null;
-        skipParentId = null;
       }
 
       // If we're currently skipping, continue
@@ -308,7 +353,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
       // If this item is collapsed, start skipping
       if (collapsedSections.has(item.id)) {
         skipUntilLevel = nivel;
-        skipParentId = item.id;
       }
     }
 
@@ -334,16 +378,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
     });
   }, []);
 
-  const handleDelete = useCallback(async (id: string) => {
-    try {
-      await playbookService.deleteItem(id);
-      toast({ title: "Item excluído com sucesso" });
-      onUpdate();
-    } catch (error) {
-      toast({ title: "Erro ao excluir", variant: "destructive" });
-    }
-  }, [toast, onUpdate]);
-
   // Optimistic update handler
   const handleDestinationChange = useCallback(async (itemId: string, field: string, value: string) => {
     // Optimistic update - update UI immediately
@@ -367,34 +401,41 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
   const virtualItems = virtualizer.getVirtualItems();
 
+  // Calculate total width for proper scrolling
+  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 100);
+
   return (
     <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Header fixo */}
-      <div className="flex items-center bg-slate-50 border-b border-slate-200 text-xs font-bold">
-        <div className="w-[70px] text-center py-2 text-slate-700 flex-shrink-0">Nível</div>
-        <div className="w-[250px] py-2 text-slate-700 flex-shrink-0">Descrição</div>
-        <div className="w-[50px] text-center py-2 text-slate-700 flex-shrink-0">Unid.</div>
-        <div className="w-[50px] text-center py-2 text-slate-700 flex-shrink-0">Qtd.</div>
-        <div className="w-[60px] text-center py-2 text-slate-700 flex-shrink-0">%</div>
-        <div className="w-[130px] text-right py-2 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
-        <div className="w-[130px] text-right py-2 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
-        <div className="w-[130px] text-right py-2 px-2 text-yellow-700 bg-yellow-50/50 flex-shrink-0">Equip.</div>
-        <div className="w-[130px] text-right py-2 px-2 text-emerald-700 bg-emerald-50/50 flex-shrink-0">Verbas</div>
-        <div className="w-[110px] text-right py-2 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
-        <div className="w-[110px] text-right py-2 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
-        {!readOnly && <div className="w-[70px] text-center py-2 flex-shrink-0">Ações</div>}
-      </div>
-
-      {/* Virtualized rows */}
-      <div
+      {/* Scrollable container for header + body */}
+      <div 
         ref={parentRef}
-        className="overflow-auto"
-        style={{ height: "calc(100vh - 400px)", minHeight: "400px" }}
+        className="overflow-auto playbook-table-scroll"
+        style={{ height: "calc(100vh - 320px)", minHeight: "500px" }}
       >
+        {/* Header - inside scroll container for horizontal sync */}
+        <div 
+          className="flex items-center bg-slate-50 border-b border-slate-200 text-xs font-bold sticky top-0 z-10"
+          style={{ minWidth: `${totalWidth}px` }}
+        >
+          <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">Nível</div>
+          <div className="w-[280px] py-3 text-slate-700 flex-shrink-0">Descrição</div>
+          <div className="w-[60px] text-center py-3 text-slate-700 flex-shrink-0">Unid.</div>
+          <div className="w-[60px] text-center py-3 text-slate-700 flex-shrink-0">Qtd.</div>
+          <div className="w-[120px] text-right py-3 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
+          <div className="w-[120px] text-right py-3 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
+          <div className="w-[120px] text-right py-3 px-2 text-yellow-700 bg-yellow-50/50 flex-shrink-0">Equip.</div>
+          <div className="w-[120px] text-right py-3 px-2 text-emerald-700 bg-emerald-50/50 flex-shrink-0">Verbas</div>
+          <div className="w-[120px] text-right py-3 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
+          <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
+          <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">%</div>
+          {!readOnly && <div className="w-[100px] text-center py-3 flex-shrink-0">Ações</div>}
+        </div>
+
+        {/* Virtualized rows */}
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
+            minWidth: `${totalWidth}px`,
             position: "relative",
           }}
         >
@@ -411,6 +452,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
                   top: 0,
                   left: 0,
                   width: "100%",
+                  minWidth: `${totalWidth}px`,
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
@@ -421,7 +463,6 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
                   isCollapsed={isCollapsible ? isCollapsed : undefined}
                   onToggleCollapse={isCollapsible ? () => handleToggleCollapse(item.id) : undefined}
                   onDestinationChange={handleDestinationChange}
-                  onDelete={handleDelete}
                   onEdit={onEdit}
                   readOnly={readOnly}
                 />
@@ -433,16 +474,17 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
       {/* Footer com totais */}
       <div className="flex items-center bg-slate-100 border-t-2 border-slate-300 text-sm font-bold">
-        <div className="flex-1 py-3 px-4 text-slate-700">
-          TOTAL GERAL ({visibleItems.length} itens)
+        <div className="py-3 px-4 text-slate-700" style={{ width: `${70 + 280 + 60 + 60 + 120 + 120 + 120 + 120}px` }}>
+          TOTAL GERAL ({data.length} itens)
         </div>
-        <div className="w-[110px] text-right py-3 px-2 text-slate-900">
+        <div className="w-[120px] text-right py-3 px-2 text-slate-900 flex-shrink-0">
           {formatCurrency(grandTotalOriginal)}
         </div>
-        <div className="w-[110px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10">
+        <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">
           {formatCurrency(grandTotalMeta)}
         </div>
-        {!readOnly && <div className="w-[70px] flex-shrink-0" />}
+        <div className="w-[70px] flex-shrink-0" />
+        {!readOnly && <div className="w-[100px] flex-shrink-0" />}
       </div>
     </div>
   );

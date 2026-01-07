@@ -4,6 +4,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar for playbook table */
+.playbook-table-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.playbook-table-scroll::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 5px;
+}
+
+.playbook-table-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 5px;
+  border: 2px solid #f8fafc;
+}
+
+.playbook-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.playbook-table-scroll::-webkit-scrollbar-corner {
+  background: #f8fafc;
+}
+
 @layer base {
   :root {
     /* --- PALETA GRIFO ENGENHARIA --- */
