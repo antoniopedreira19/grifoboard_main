@@ -182,7 +182,7 @@ const PlaybookRow = memo(function PlaybookRow({
     return (total / grandTotalOriginal) * 100;
   }, [item.precoTotal, item.preco_total, grandTotalOriginal]);
   
-  const isHighPercentage = percentage > 2;
+  const isHighPercentage = percentage >= 2;
 
   return (
     <div
@@ -307,7 +307,7 @@ const PlaybookRow = memo(function PlaybookRow({
               <Edit2 className="h-3 w-3 text-slate-400" />
             </Button>
           )}
-          {item.nivel === 2 && (
+          {isHighPercentage && (
             <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
           )}
         </div>
