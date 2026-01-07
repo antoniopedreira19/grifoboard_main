@@ -263,12 +263,64 @@ const Playbook = () => {
               {isAdmin && (
                 <Card className="border border-slate-200 bg-white shadow-sm">
                   <CardContent className="py-4 px-5">
-                    {/* Controle de Coeficientes Simplificado */}
-                    <div className="flex items-center gap-4">
-                      <Settings2 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold">Configuração de Coeficientes</span>
-                      {/* Inputs de coeficiente omitidos para brevidade, mas lógica mantida no state */}
-                      <Button size="sm" variant="ghost" onClick={saveCoeficienteConfig}>
+                    <div className="flex flex-wrap items-center gap-6">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">Configuração de Coeficientes</span>
+                      </div>
+                      
+                      <RadioGroup
+                        value={coeficienteSelecionado}
+                        onValueChange={(v) => {
+                          const newSel = v as "1" | "2";
+                          setCoeficienteSelecionado(newSel);
+                          handleCoeficienteChange(newSel);
+                        }}
+                        className="flex items-center gap-4"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="1" id="coef1" />
+                          <Label htmlFor="coef1" className="text-sm">Coef. 1</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={coeficiente1}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCoeficiente1(val);
+                              if (coeficienteSelecionado === "1") {
+                                handleCoeficienteChange("1", val, coeficiente2);
+                              }
+                            }}
+                            className="w-20 h-8 text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="2" id="coef2" />
+                          <Label htmlFor="coef2" className="text-sm">Coef. 2</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={coeficiente2}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCoeficiente2(val);
+                              if (coeficienteSelecionado === "2") {
+                                handleCoeficienteChange("2", coeficiente1, val);
+                              }
+                            }}
+                            className="w-20 h-8 text-sm"
+                          />
+                        </div>
+                      </RadioGroup>
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={saveCoeficienteConfig}
+                        disabled={isSavingConfig}
+                      >
+                        {isSavingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                         Salvar Config
                       </Button>
                     </div>
