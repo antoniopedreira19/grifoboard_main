@@ -42,6 +42,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { EventDetailModal } from "@/components/agenda/EventDetailModal";
+import { EventEditModal } from "@/components/agenda/EventEditModal";
 
 export default function Agenda() {
   const { userSession } = useAuth();
@@ -51,6 +53,11 @@ export default function Agenda() {
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Modal states
+  const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Form States
   const [newEvent, setNewEvent] = useState({
@@ -131,6 +138,26 @@ export default function Agenda() {
     } catch (error) {
       toast({ title: "Erro", description: "Não foi possível atualizar o status.", variant: "destructive" });
       fetchEvents(); // Reverte em caso de erro
+    }
+  };
+
+  const handleOpenDetail = (event: AgendaEvent) => {
+    setSelectedEvent(event);
+    setIsDetailOpen(true);
+  };
+
+  const handleOpenEdit = (event: AgendaEvent) => {
+    setSelectedEvent(event);
+    setIsEditOpen(true);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await agendaService.deletarEvento(eventId);
+      toast({ description: "Evento excluído com sucesso!" });
+      fetchEvents();
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao excluir evento.", variant: "destructive" });
     }
   };
 
@@ -342,6 +369,7 @@ export default function Agenda() {
                         return (
                           <div
                             key={event.id}
+                            onClick={() => handleOpenDetail(event)}
                             className={cn(
                               "text-xs px-2.5 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2 group relative",
                               getCategoryColor(event.category, event.completed),
@@ -415,8 +443,9 @@ export default function Agenda() {
                     </div>
 
                     <Card
+                      onClick={() => handleOpenDetail(event)}
                       className={cn(
-                        "flex-1 border-l-4 hover:shadow-md transition-all",
+                        "flex-1 border-l-4 hover:shadow-md transition-all cursor-pointer",
                         event.completed
                           ? "border-l-green-500 bg-slate-50 opacity-70"
                           : isOverdue
@@ -496,6 +525,32 @@ export default function Agenda() {
           </div>
         )}
       </div>
+
+      {/* Modais */}
+      <EventDetailModal
+        event={selectedEvent}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onEdit={handleOpenEdit}
+        onDelete={handleDeleteEvent}
+        onUpdate={() => {
+          fetchEvents();
+          // Atualiza o selectedEvent com dados frescos
+          if (selectedEvent) {
+            const updated = events.find(e => e.id === selectedEvent.id);
+            if (updated) setSelectedEvent(updated);
+          }
+        }}
+        obraId={obraId || ""}
+      />
+
+      <EventEditModal
+        event={selectedEvent}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onUpdate={fetchEvents}
+        obraId={obraId || ""}
+      />
     </div>
   );
 }

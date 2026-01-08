@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       agenda_events: {
         Row: {
+          anexo_url: string | null
           category: string | null
           completed: boolean | null
           created_at: string | null
@@ -25,10 +26,12 @@ export type Database = {
           id: string
           obra_id: string
           participants: string[] | null
+          resumo: string | null
           start_date: string
           title: string
         }
         Insert: {
+          anexo_url?: string | null
           category?: string | null
           completed?: boolean | null
           created_at?: string | null
@@ -38,10 +41,12 @@ export type Database = {
           id?: string
           obra_id: string
           participants?: string[] | null
+          resumo?: string | null
           start_date: string
           title: string
         }
         Update: {
+          anexo_url?: string | null
           category?: string | null
           completed?: boolean | null
           created_at?: string | null
@@ -51,6 +56,7 @@ export type Database = {
           id?: string
           obra_id?: string
           participants?: string[] | null
+          resumo?: string | null
           start_date?: string
           title?: string
         }
