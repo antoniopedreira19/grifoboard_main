@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { playbookService } from "@/services/playbookService";
+import { gamificationService } from "@/services/gamificationService";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,6 +168,11 @@ const Playbook = () => {
   const handleClearData = useCallback(async () => {
     if (!obraId) return;
     try {
+      // Remove XP earned from playbook before clearing
+      if (userSession?.user?.id) {
+        await gamificationService.removePlaybookXP(userSession.user.id, obraId);
+      }
+
       await playbookService.savePlaybook(
         obraId,
         {
@@ -182,7 +188,7 @@ const Playbook = () => {
     } catch (e) {
       toast({ title: "Erro", description: "Falha ao limpar.", variant: "destructive" });
     }
-  }, [obraId, toast]);
+  }, [obraId, toast, userSession?.user?.id]);
 
   return (
     <div className="container mx-auto max-w-[1600px] px-4 sm:px-6 py-4 min-h-screen pb-24 space-y-6 bg-slate-50/30">
