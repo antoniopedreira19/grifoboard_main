@@ -28,13 +28,13 @@ import {
   AlignLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -124,15 +124,15 @@ export default function Agenda() {
   const getCategoryColor = (cat: string) => {
     switch (cat) {
       case "reuniao":
-        return "bg-blue-100 text-blue-700 border-blue-200";
+        return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200";
       case "visita":
-        return "bg-purple-100 text-purple-700 border-purple-200";
+        return "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200";
       case "entrega":
-        return "bg-green-100 text-green-700 border-green-200";
+        return "bg-green-100 text-green-700 border-green-200 hover:bg-green-200";
       case "milestone":
-        return "bg-amber-100 text-amber-700 border-amber-200";
+        return "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200";
       default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200";
     }
   };
 
@@ -212,7 +212,7 @@ export default function Agenda() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Participantes (separe por vírgula)</Label>
+                  <Label>Participantes</Label>
                   <Input
                     placeholder="João, Maria, Empreiteira X"
                     value={newEvent.participants}
@@ -271,57 +271,64 @@ export default function Agenda() {
             </div>
 
             {/* Calendar Grid */}
-            <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-hidden">
-              {calendarDays.map((day, idx) => {
-                const dayEvents = events.filter((e) => isSameDay(parseISO(e.start_date), day));
-                const isTodayDate = isToday(day);
-                const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-7 auto-rows-[minmax(150px,1fr)]">
+                {calendarDays.map((day, idx) => {
+                  const dayEvents = events.filter((e) => isSameDay(parseISO(e.start_date), day));
+                  const isTodayDate = isToday(day);
+                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
 
-                return (
-                  <div
-                    key={day.toString()}
-                    className={cn(
-                      "border-b border-r border-slate-100 p-2 flex flex-col gap-1 transition-colors min-h-0", // min-h-0 crucial para nested flex
-                      !isCurrentMonth && "bg-slate-50/50 text-slate-400",
-                      isTodayDate && "bg-blue-50/30",
-                    )}
-                  >
-                    <div className="flex justify-between items-center mb-1 shrink-0">
-                      <span
-                        className={cn(
-                          "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
-                          isTodayDate ? "bg-primary text-white shadow-sm" : "text-slate-700",
-                        )}
-                      >
-                        {format(day, "d")}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
-                          {dayEvents.length}
-                        </Badge>
+                  return (
+                    <div
+                      key={day.toString()}
+                      className={cn(
+                        "border-b border-r border-slate-100 p-2 flex flex-col gap-2 transition-colors min-h-[150px]",
+                        !isCurrentMonth && "bg-slate-50/50 text-slate-400",
+                        isTodayDate && "bg-blue-50/20",
                       )}
-                    </div>
-
-                    <div className="flex-1 flex flex-col gap-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                      {dayEvents.map((event) => (
-                        <div
-                          key={event.id}
+                    >
+                      {/* Date Number Header */}
+                      <div className="flex justify-between items-center shrink-0">
+                        <span
                           className={cn(
-                            "text-[10px] px-1.5 py-1 rounded border shadow-sm truncate font-medium cursor-pointer hover:opacity-80 transition-opacity",
-                            getCategoryColor(event.category),
+                            "text-base font-semibold w-8 h-8 flex items-center justify-center rounded-full",
+                            isTodayDate ? "bg-primary text-white shadow-md" : "text-slate-700",
                           )}
-                          title={`${event.title} - ${format(parseISO(event.start_date), "HH:mm")}`}
                         >
-                          <span className="font-bold opacity-75 mr-1">
-                            {format(parseISO(event.start_date), "HH:mm")}
-                          </span>
-                          {event.title}
-                        </div>
-                      ))}
+                          {format(day, "d")}
+                        </span>
+                        {dayEvents.length > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] h-5 px-2 font-medium bg-slate-100 text-slate-600"
+                          >
+                            {dayEvents.length} eventos
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Events List */}
+                      <div className="flex-1 flex flex-col gap-1.5 w-full">
+                        {dayEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            className={cn(
+                              "text-xs px-2 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2",
+                              getCategoryColor(event.category),
+                            )}
+                            title={`${event.title} (${format(parseISO(event.start_date), "HH:mm")})`}
+                          >
+                            <span className="font-bold opacity-75 text-[10px] bg-white/20 px-1 rounded">
+                              {format(parseISO(event.start_date), "HH:mm")}
+                            </span>
+                            <span className="truncate">{event.title}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
@@ -335,23 +342,23 @@ export default function Agenda() {
               )}
               {events.map((event) => (
                 <div key={event.id} className="flex gap-4 group">
-                  <div className="w-16 flex flex-col items-center pt-1 shrink-0">
-                    <span className="text-2xl font-bold text-slate-700">
+                  <div className="w-20 flex flex-col items-center pt-1 shrink-0">
+                    <span className="text-3xl font-bold text-slate-700">
                       {format(parseISO(event.start_date), "dd")}
                     </span>
-                    <span className="text-xs uppercase font-semibold text-slate-400">
+                    <span className="text-sm uppercase font-semibold text-slate-400">
                       {format(parseISO(event.start_date), "EEE", { locale: ptBR })}
                     </span>
                   </div>
 
                   <Card className="flex-1 border-l-4 border-l-primary hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                      <div className="space-y-1 w-full">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-lg text-slate-800">{event.title}</h3>
+                    <CardContent className="p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                      <div className="space-y-2 w-full">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h3 className="font-bold text-xl text-slate-800">{event.title}</h3>
                           <Badge
                             variant="outline"
-                            className={cn("text-[10px] capitalize", getCategoryColor(event.category))}
+                            className={cn("text-xs px-2 py-0.5 capitalize", getCategoryColor(event.category))}
                           >
                             {event.category}
                           </Badge>
@@ -360,15 +367,15 @@ export default function Agenda() {
                           <p className="text-sm text-slate-600 line-clamp-2">{event.description}</p>
                         )}
 
-                        <div className="flex flex-wrap gap-4 mt-2">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <Clock className="w-3.5 h-3.5" />
+                        <div className="flex flex-wrap gap-6 mt-3">
+                          <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <Clock className="w-4 h-4" />
                             {format(parseISO(event.start_date), "HH:mm")} - {format(parseISO(event.end_date), "HH:mm")}
                           </div>
                           {event.participants && event.participants.length > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                              <Users className="w-3.5 h-3.5" />
-                              <span className="truncate max-w-[300px]">{event.participants.join(", ")}</span>
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <Users className="w-4 h-4" />
+                              <span className="truncate max-w-[400px]">{event.participants.join(", ")}</span>
                             </div>
                           )}
                         </div>
