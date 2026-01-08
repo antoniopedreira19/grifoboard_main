@@ -74,47 +74,44 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
+    // Headers exatamente como a planilha modelo do usuário
     const headers = [
       "Código",
       "Descrição",
       "Unidade",
       "Quantidade orçada",
       "Mão de obra",
-      "Materiais & Ferramentas / EPI e EPC",
-      "Equipamentos de Obra",
-      "Verbas, Taxas e Impostos",
+      "Materiais",
+      "Equipamentos",
+      "Verbas",
       "Preço total",
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    
+    // Exemplo de dados para orientar o preenchimento
+    const exampleData = [
+      ["01", "ETAPA PRINCIPAL EXEMPLO", "", "", "", "", "", "", ""],
+      ["01.001", "Sub-etapa exemplo", "", "", "", "", "", "", ""],
+      ["01.001.001", "Item de serviço exemplo", "m²", "100,00", "1.500,00", "800,00", "200,00", "100,00", "2.600,00"],
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...exampleData]);
 
     ws["!cols"] = [
-      { wch: 15 },
-      { wch: 45 },
-      { wch: 10 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 35 },
-      { wch: 20 },
-      { wch: 25 },
-      { wch: 15 },
+      { wch: 15 },  // Código
+      { wch: 50 },  // Descrição
+      { wch: 10 },  // Unidade
+      { wch: 18 },  // Quantidade orçada
+      { wch: 15 },  // Mão de obra
+      { wch: 15 },  // Materiais
+      { wch: 15 },  // Equipamentos
+      { wch: 15 },  // Verbas
+      { wch: 15 },  // Preço total
     ];
 
-    const headerRange = XLSX.utils.decode_range(ws["!ref"] || "A1:I1");
-    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
-      const address = XLSX.utils.encode_cell({ r: 0, c: C });
-      if (ws[address]) {
-        ws[address].s = {
-          fill: { fgColor: { rgb: "112231" } },
-          font: { color: { rgb: "A47528" }, bold: true },
-          alignment: { horizontal: "center" },
-        };
-      }
-    }
-
     XLSX.utils.book_append_sheet(wb, ws, "Orçamento Grifo");
-    XLSX.writeFile(wb, "modelo_padrao.xlsx");
+    XLSX.writeFile(wb, "modelo_orcamento_grifo.xlsx");
 
-    toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
+    toast({ title: "Modelo baixado!", description: "Preencha a planilha seguindo o exemplo e importe novamente." });
   };
 
   // Converte números em diferentes formatos (ex: "4.265,00" ou "4,265.00") para number
