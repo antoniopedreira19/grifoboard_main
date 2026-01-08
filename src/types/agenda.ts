@@ -2,13 +2,14 @@ export interface AgendaEvent {
   id: string;
   obra_id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   start_date: string;
   end_date: string;
-  participants: string[];
-  category: "geral" | "reuniao" | "visita" | "entrega" | "milestone";
-  created_by?: string;
-  completed: boolean; // Novo campo
+  participants: string[] | null;
+  category: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  completed: boolean | null;
 }
 
-export type AgendaEventInsert = Omit<AgendaEvent, "id" | "created_by" | "completed">;
+export type AgendaEventInsert = Omit<AgendaEvent, "id" | "created_by" | "completed" | "created_at">;
