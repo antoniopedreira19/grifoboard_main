@@ -206,23 +206,83 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     const activeCoef = selectedCoef === "1" ? parseFloat(coef1) : parseFloat(coef2);
     const validCoef = isNaN(activeCoef) ? 1 : activeCoef;
 
+    // Primeiro, calcular os totais dos itens (nivel 2)
+    // e agrupar por seus pais (nivel 0 e 1)
+    const itemTotals = new Map<number, number>(); // index -> total calculado
+
+    // Inicializar com valores originais para itens (nivel 2)
+    rawData.forEach((item, idx) => {
+      if (item.nivel === 2) {
+        itemTotals.set(idx, item.precoTotal);
+      }
+    });
+
+    // Calcular totais para SUB (nivel 1) e PRINCIPAL (nivel 0)
+    // Percorrer de trás para frente para calcular hierarquicamente
+    for (let i = rawData.length - 1; i >= 0; i--) {
+      const item = rawData[i];
+      
+      if (item.nivel === 0 || item.nivel === 1) {
+        // Somar todos os filhos até encontrar outro item do mesmo nível ou menor
+        let soma = 0;
+        for (let j = i + 1; j < rawData.length; j++) {
+          const filho = rawData[j];
+          
+          // Se encontrar item de nível igual ou menor, parar
+          if (filho.nivel <= item.nivel) break;
+          
+          // Se é filho direto (nivel imediatamente abaixo ou item final)
+          if (item.nivel === 0) {
+            // Principal soma SUBs (nivel 1) ou ITEMs (nivel 2) se não houver SUB
+            if (filho.nivel === 1) {
+              soma += itemTotals.get(j) || 0;
+            } else if (filho.nivel === 2) {
+              // Verificar se tem um SUB antes deste item
+              let temSubAntes = false;
+              for (let k = i + 1; k < j; k++) {
+                if (rawData[k].nivel === 1) {
+                  temSubAntes = true;
+                  break;
+                }
+              }
+              // Se não tem SUB, somar direto
+              if (!temSubAntes) {
+                soma += itemTotals.get(j) || 0;
+              }
+            }
+          } else if (item.nivel === 1) {
+            // SUB soma apenas ITEMs (nivel 2)
+            if (filho.nivel === 2) {
+              soma += itemTotals.get(j) || 0;
+            }
+          }
+        }
+        itemTotals.set(i, soma);
+      }
+    }
+
     let grandTotalMeta = 0;
     let grandTotalOriginal = 0;
 
-    const hierarchyData = rawData.map((item) => {
+    const hierarchyData = rawData.map((item, idx) => {
+      // Usar o total calculado para a hierarquia
+      const calculatedTotal = itemTotals.get(idx) || item.precoTotal;
+      
       const metaMO = item.valorMaoDeObra * validCoef;
       const metaMat = item.valorMateriais * validCoef;
       const metaEquip = item.valorEquipamentos * validCoef;
       const metaVerb = item.valorVerbas * validCoef;
-      const precoTotalMeta = item.precoTotal * validCoef;
+      const precoTotalMeta = calculatedTotal * validCoef;
 
+      // Somar apenas itens (nivel 2) para o grand total
       if (item.nivel === 2) {
         grandTotalMeta += precoTotalMeta;
-        grandTotalOriginal += item.precoTotal;
+        grandTotalOriginal += calculatedTotal;
       }
 
       return {
         ...item,
+        precoTotal: calculatedTotal, // Usar o total calculado
         metaMO,
         metaMat,
         metaEquip,
