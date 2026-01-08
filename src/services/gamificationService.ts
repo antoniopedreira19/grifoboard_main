@@ -156,6 +156,49 @@ export const gamificationService = {
       last_activity_date: new Date().toISOString(),
     });
   },
+
+  // Remove all XP earned from playbook for a specific obra
+  async removePlaybookXP(userId: string, obraId: string) {
+    try {
+      // Find all playbook-related logs for this obra
+      const { data: logs, error: fetchError } = await supabase
+        .from("gamification_logs")
+        .select("id, xp_amount")
+        .eq("user_id", userId)
+        .eq("action_type", "ECONOMIA_PLAYBOOK")
+        .like("reference_id", `${obraId}%`);
+
+      if (fetchError) throw fetchError;
+      if (!logs || logs.length === 0) return;
+
+      // Calculate total XP to remove
+      const totalXPToRemove = logs.reduce((sum, log) => sum + (log.xp_amount || 0), 0);
+
+      // Delete all playbook logs for this obra
+      const { error: deleteError } = await supabase
+        .from("gamification_logs")
+        .delete()
+        .eq("user_id", userId)
+        .eq("action_type", "ECONOMIA_PLAYBOOK")
+        .like("reference_id", `${obraId}%`);
+
+      if (deleteError) throw deleteError;
+
+      // Update profile XP
+      if (totalXPToRemove > 0) {
+        await this.updateProfileXP(userId, -totalXPToRemove);
+
+        toast({
+          title: `XP do Playbook Removido`,
+          description: `${totalXPToRemove} XP foram revertidos.`,
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao remover XP do playbook:", error);
+    }
+  },
 };
 
 function formatActionName(action: string): string {
