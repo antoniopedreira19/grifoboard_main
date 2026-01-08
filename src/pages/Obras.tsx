@@ -5,8 +5,10 @@ import { masterAdminService } from "@/services/masterAdminService";
 import { Obra } from "@/types/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useRegistry } from "@/context/RegistryContext";
+import { useEmpresa } from "@/hooks/useEmpresa";
 import { Button } from "@/components/ui/button";
-import { Plus, Building2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Building2, Briefcase } from "lucide-react";
 import ObrasList from "@/components/obra/ObrasList";
 import ObraForm from "@/components/obra/ObraForm";
 import ObraEditForm from "@/components/obra/ObraEditForm";
@@ -25,6 +27,7 @@ const Obras = ({ onObraSelect }: ObrasPageProps) => {
   const [selectedObraForEdit, setSelectedObraForEdit] = useState<Obra | null>(null);
   const { userSession, setObraAtiva } = useAuth();
   const { setSelectedObraId } = useRegistry();
+  const { empresa, isLoading: empresaLoading } = useEmpresa();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [redirectAttempted, setRedirectAttempted] = useState(false);
@@ -148,25 +151,44 @@ const Obras = ({ onObraSelect }: ObrasPageProps) => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        className="flex flex-col gap-4"
       >
-        <div className="space-y-1">
-          <h1 className="text-3xl font-heading font-bold text-grifo-primary flex items-center gap-3">
-            <Building2 className="h-8 w-8 text-grifo-secondary" />
-            Minhas Obras
-          </h1>
-          <p className="text-grifo-primary/60 max-w-lg">
-            Gerencie seus projetos, acompanhe o progresso e acesse os detalhes de cada canteiro.
-          </p>
-        </div>
+        {/* Badge da Empresa */}
+        {empresa && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Badge 
+              variant="outline" 
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gradient-to-r from-grifo-secondary/10 to-grifo-secondary/5 border-grifo-secondary/30 text-grifo-primary rounded-full shadow-sm"
+            >
+              <Briefcase className="h-4 w-4 text-grifo-secondary" />
+              <span className="text-grifo-secondary font-semibold">{empresa.nome}</span>
+            </Badge>
+          </motion.div>
+        )}
 
-        <Button
-          onClick={() => setIsFormOpen(true)}
-          className="bg-grifo-secondary hover:bg-grifo-secondary/90 text-white shadow-lg shadow-grifo-secondary/20 transition-all hover:-translate-y-0.5"
-          size="lg"
-        >
-          <Plus className="mr-2 h-5 w-5" /> Nova Obra
-        </Button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-heading font-bold text-grifo-primary flex items-center gap-3">
+              <Building2 className="h-8 w-8 text-grifo-secondary" />
+              Minhas Obras
+            </h1>
+            <p className="text-grifo-primary/60 max-w-lg">
+              Gerencie seus projetos, acompanhe o progresso e acesse os detalhes de cada canteiro.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            className="bg-grifo-secondary hover:bg-grifo-secondary/90 text-white shadow-lg shadow-grifo-secondary/20 transition-all hover:-translate-y-0.5"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" /> Nova Obra
+          </Button>
+        </div>
       </motion.div>
 
       {/* Lista de Obras */}
