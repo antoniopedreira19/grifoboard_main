@@ -16,17 +16,7 @@ import {
   endOfWeek,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Users,
-  List,
-  Plus,
-  MapPin,
-  AlignLeft,
-} from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Users, List, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -137,7 +127,8 @@ export default function Agenda() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-[1600px] h-[calc(100vh-2rem)] flex flex-col gap-4 overflow-hidden">
+    // Removido h-screen e overflow-hidden para permitir que a página cresça
+    <div className="container mx-auto p-4 max-w-[1600px] flex flex-col gap-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0">
         <div>
@@ -236,10 +227,10 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
+      {/* Main Content Area - Sem altura fixa, cresce com o conteúdo */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
         {/* Navigation Bar */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))}>
               <ChevronLeft className="w-4 h-4" />
@@ -257,9 +248,9 @@ export default function Agenda() {
         </div>
 
         {view === "calendar" ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex flex-col">
             {/* Weekday Headers */}
-            <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 shrink-0">
+            <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
               {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
                 <div
                   key={day}
@@ -270,69 +261,67 @@ export default function Agenda() {
               ))}
             </div>
 
-            {/* Calendar Grid */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-7 auto-rows-[minmax(150px,1fr)]">
-                {calendarDays.map((day, idx) => {
-                  const dayEvents = events.filter((e) => isSameDay(parseISO(e.start_date), day));
-                  const isTodayDate = isToday(day);
-                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+            {/* Calendar Grid - Grid padrão, sem scroll interno */}
+            <div className="grid grid-cols-7 auto-rows-[minmax(160px,1fr)]">
+              {calendarDays.map((day, idx) => {
+                const dayEvents = events.filter((e) => isSameDay(parseISO(e.start_date), day));
+                const isTodayDate = isToday(day);
+                const isCurrentMonth = day.getMonth() === currentDate.getMonth();
 
-                  return (
-                    <div
-                      key={day.toString()}
-                      className={cn(
-                        "border-b border-r border-slate-100 p-2 flex flex-col gap-2 transition-colors min-h-[150px]",
-                        !isCurrentMonth && "bg-slate-50/50 text-slate-400",
-                        isTodayDate && "bg-blue-50/20",
-                      )}
-                    >
-                      {/* Date Number Header */}
-                      <div className="flex justify-between items-center shrink-0">
-                        <span
-                          className={cn(
-                            "text-base font-semibold w-8 h-8 flex items-center justify-center rounded-full",
-                            isTodayDate ? "bg-primary text-white shadow-md" : "text-slate-700",
-                          )}
-                        >
-                          {format(day, "d")}
-                        </span>
-                        {dayEvents.length > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] h-5 px-2 font-medium bg-slate-100 text-slate-600"
-                          >
-                            {dayEvents.length} eventos
-                          </Badge>
+                return (
+                  <div
+                    key={day.toString()}
+                    className={cn(
+                      "border-b border-r border-slate-100 p-2 flex flex-col gap-2 transition-colors min-h-[160px]",
+                      !isCurrentMonth && "bg-slate-50/50 text-slate-400",
+                      isTodayDate && "bg-blue-50/20",
+                    )}
+                  >
+                    {/* Date Number Header */}
+                    <div className="flex justify-between items-center shrink-0">
+                      <span
+                        className={cn(
+                          "text-base font-semibold w-8 h-8 flex items-center justify-center rounded-full",
+                          isTodayDate ? "bg-primary text-white shadow-md" : "text-slate-700",
                         )}
-                      </div>
-
-                      {/* Events List */}
-                      <div className="flex-1 flex flex-col gap-1.5 w-full">
-                        {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              "text-xs px-2 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2",
-                              getCategoryColor(event.category),
-                            )}
-                            title={`${event.title} (${format(parseISO(event.start_date), "HH:mm")})`}
-                          >
-                            <span className="font-bold opacity-75 text-[10px] bg-white/20 px-1 rounded">
-                              {format(parseISO(event.start_date), "HH:mm")}
-                            </span>
-                            <span className="truncate">{event.title}</span>
-                          </div>
-                        ))}
-                      </div>
+                      >
+                        {format(day, "d")}
+                      </span>
+                      {dayEvents.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] h-5 px-2 font-medium bg-slate-100 text-slate-600"
+                        >
+                          {dayEvents.length} eventos
+                        </Badge>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Events List */}
+                    <div className="flex-1 flex flex-col gap-1.5 w-full">
+                      {dayEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className={cn(
+                            "text-xs px-2.5 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2 hover:opacity-80",
+                            getCategoryColor(event.category),
+                          )}
+                          title={`${event.title} (${format(parseISO(event.start_date), "HH:mm")})`}
+                        >
+                          <span className="font-bold opacity-75 text-[10px] bg-white/30 px-1 rounded shrink-0">
+                            {format(parseISO(event.start_date), "HH:mm")}
+                          </span>
+                          <span className="truncate text-xs">{event.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
-          <ScrollArea className="flex-1 p-4">
+          <div className="p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {events.length === 0 && (
                 <div className="text-center py-20 text-slate-400 flex flex-col items-center gap-3">
@@ -385,7 +374,7 @@ export default function Agenda() {
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </div>
     </div>
