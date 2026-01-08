@@ -25,6 +25,7 @@ import GrifoWay from "@/pages/GrifoWay";
 import GrifoAI from "@/pages/GrifoAI";
 import GestaoMetas from "@/pages/GestaoMetas";
 import PMP from "@/pages/PMP";
+import Agenda from "@/pages/Agenda"; // Import da nova página Agenda
 import FormProfissionais from "@/pages/form/Profissionais";
 import FormEmpresas from "@/pages/form/Empresas";
 import FormFornecedores from "@/pages/form/Fornecedores";
@@ -156,7 +157,6 @@ function App() {
                         <Route path="/" element={<Navigate to="/obras" replace />} />
                         <Route path="/auth" element={<Auth />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
-
                         <Route path="/obras" element={<Obras onObraSelect={handleObraSelect} />} />
                         <Route path="/master-admin" element={<MasterAdmin />} />
                         <Route path="/formularios" element={<Formularios />} />
@@ -167,13 +167,12 @@ function App() {
                         <Route path="/grifo-ai" element={<GrifoAI />} />
                         <Route path="/gestao-metas" element={<GestaoMetas />} />
                         <Route path="/pmp" element={<PMP />} />
+                        <Route path="/agenda" element={<Agenda />} /> {/* Nova Rota */}
                         <Route path="/portal-parceiro" element={<PortalParceiro />} />
-
                         <Route path="/tarefas" element={<Index onObraSelect={handleObraSelect} />} />
                         <Route path="/dashboard" element={<Index onObraSelect={handleObraSelect} />} />
                         <Route path="/diarioobra" element={<DiarioObra />} />
                         <Route path="/checklist" element={<Index onObraSelect={handleObraSelect} />} />
-
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>
