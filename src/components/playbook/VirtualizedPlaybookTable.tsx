@@ -222,7 +222,7 @@ const PlaybookRow = memo(function PlaybookRow({
       </div>
 
       {/* Descrição */}
-      <div className="w-[280px] py-2 flex-shrink-0">
+      <div className="w-[300px] py-2 flex-shrink-0">
         <div
           className={cn(
             "flex items-start gap-2 text-sm",
@@ -252,33 +252,33 @@ const PlaybookRow = memo(function PlaybookRow({
       </div>
 
       {/* Mão de Obra */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-blue-50/20 flex-shrink-0">
+      <div className="w-[130px] flex items-center justify-end py-2 px-2 bg-blue-50/20 flex-shrink-0">
         <span className="text-xs font-medium text-slate-700">
           {formatCurrency(item.valor_mao_de_obra)}
         </span>
       </div>
 
       {/* Materiais */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 bg-orange-50/20 flex-shrink-0">
+      <div className="w-[130px] flex items-center justify-end py-2 px-2 bg-orange-50/20 flex-shrink-0">
         <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
       </div>
 
 
       {/* Total Original */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
+      <div className="w-[130px] flex items-center justify-end py-2 px-2 font-medium text-xs bg-slate-50 flex-shrink-0">
         {formatCurrency(item.precoTotal || item.preco_total)}
       </div>
 
       {/* Total Meta */}
-      <div className="w-[120px] flex items-center justify-end py-2 px-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5 flex-shrink-0">
+      <div className="w-[130px] flex items-center justify-end py-2 px-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5 flex-shrink-0">
         {formatCurrency(item.precoTotalMeta)}
       </div>
 
       {/* % - após Total Meta */}
-      <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
+      <div className="w-[55px] flex items-center justify-center py-2 flex-shrink-0">
         <span
           className={cn(
-            "text-xs font-medium px-1.5 py-0.5 rounded",
+            "text-xs font-medium px-1 py-0.5 rounded",
             isHighPercentage ? "bg-amber-100 text-amber-800 font-bold" : "text-slate-500"
           )}
         >
@@ -286,14 +286,9 @@ const PlaybookRow = memo(function PlaybookRow({
         </span>
       </div>
 
-      {/* Ações - Compacto */}
+      {/* Ações - Mínimo */}
       {!readOnly && (
-        <div className="w-[70px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
-          {onEdit && (
-            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEdit(item)}>
-              <Edit2 className="h-3 w-3 text-slate-400" />
-            </Button>
-          )}
+        <div className="w-[50px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
           {isHighPercentage && (
             <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
           )}
@@ -407,8 +402,8 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
   const virtualItems = virtualizer.getVirtualItems();
 
-  // Calculate total width for proper scrolling (Ações reduzido de 100 para 70)
-  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 70);
+  // Calculate total width for proper scrolling
+  const totalWidth = 70 + 300 + 60 + 60 + 130 + 130 + 130 + 130 + 55 + (readOnly ? 0 : 50);
 
   return (
     <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -451,15 +446,15 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
           style={{ minWidth: `${totalWidth}px` }}
         >
           <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">Nível</div>
-          <div className="w-[280px] py-3 text-slate-700 flex-shrink-0">Descrição</div>
+          <div className="w-[300px] py-3 text-slate-700 flex-shrink-0">Descrição</div>
           <div className="w-[60px] text-center py-3 text-slate-700 flex-shrink-0">Unid.</div>
           <div className="w-[60px] text-center py-3 text-slate-700 flex-shrink-0">Qtd.</div>
-          <div className="w-[120px] text-right py-3 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
-          <div className="w-[120px] text-right py-3 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
-          <div className="w-[120px] text-right py-3 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
-          <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
-          <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">%</div>
-          {!readOnly && <div className="w-[70px] text-center py-3 flex-shrink-0">Ações</div>}
+          <div className="w-[130px] text-right py-3 px-2 text-blue-700 bg-blue-50/50 flex-shrink-0">Mão de Obra</div>
+          <div className="w-[130px] text-right py-3 px-2 text-orange-700 bg-orange-50/50 flex-shrink-0">Materiais</div>
+          <div className="w-[130px] text-right py-3 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
+          <div className="w-[130px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
+          <div className="w-[55px] text-center py-3 text-slate-700 flex-shrink-0">%</div>
+          {!readOnly && <div className="w-[50px] text-center py-3 flex-shrink-0"></div>}
         </div>
 
         {/* Virtualized rows */}
@@ -518,8 +513,8 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
             <span className="text-[#A47528]">{formatCurrency(grandTotalMeta)}</span>
           </div>
         </div>
-        <div className="w-[70px] flex-shrink-0" />
-        {!readOnly && <div className="w-[70px] flex-shrink-0" />}
+        <div className="w-[55px] flex-shrink-0" />
+        {!readOnly && <div className="w-[50px] flex-shrink-0" />}
       </div>
     </div>
   );
