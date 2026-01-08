@@ -5,9 +5,10 @@ export interface AgendaEvent {
   description?: string;
   start_date: string;
   end_date: string;
-  participants: string[]; // Array de nomes ou emails
-  category: 'geral' | 'reuniao' | 'visita' | 'entrega' | 'milestone';
+  participants: string[];
+  category: "geral" | "reuniao" | "visita" | "entrega" | "milestone";
   created_by?: string;
+  completed: boolean; // Novo campo
 }
 
-export type AgendaEventInsert = Omit<AgendaEvent, 'id' | 'created_by'>;
+export type AgendaEventInsert = Omit<AgendaEvent, "id" | "created_by" | "completed">;

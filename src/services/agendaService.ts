@@ -16,18 +16,20 @@ export const agendaService = {
   },
 
   async criarEvento(evento: AgendaEventInsert) {
-    const { data, error } = await supabase
-      .from("agenda_events")
-      .insert([evento])
-      .select()
-      .single();
+    const { data, error } = await supabase.from("agenda_events").insert([evento]).select().single();
 
     if (error) throw error;
     return data as AgendaEvent;
   },
 
+  async toggleConclusao(id: string, completed: boolean) {
+    const { error } = await supabase.from("agenda_events").update({ completed }).eq("id", id);
+
+    if (error) throw error;
+  },
+
   async deletarEvento(id: string) {
     const { error } = await supabase.from("agenda_events").delete().eq("id", id);
     if (error) throw error;
-  }
+  },
 };
