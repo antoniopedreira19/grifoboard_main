@@ -70,9 +70,8 @@ const DestinationSelector = memo(function DestinationSelector({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1">
+        <Button variant="outline" size="icon" className="h-5 w-5" title="Destinos">
           <Settings2 className="h-3 w-3" />
-          Destinos
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3 bg-white" align="end">
@@ -287,11 +286,11 @@ const PlaybookRow = memo(function PlaybookRow({
         </span>
       </div>
 
-      {/* Ações - Apenas editar e destinos */}
+      {/* Ações - Compacto */}
       {!readOnly && (
-        <div className="w-[100px] flex items-center justify-center gap-1 py-2 flex-shrink-0">
+        <div className="w-[70px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
           {onEdit && (
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(item)}>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEdit(item)}>
               <Edit2 className="h-3 w-3 text-slate-400" />
             </Button>
           )}
@@ -351,7 +350,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
     count: visibleItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 48,
-    overscan: 10,
+    overscan: 5, // Reduzido para melhor performance
   });
 
   // Get all collapsible items (nivel 0 or 1)
@@ -408,8 +407,8 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
 
   const virtualItems = virtualizer.getVirtualItems();
 
-  // Calculate total width for proper scrolling
-  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 100);
+  // Calculate total width for proper scrolling (Ações reduzido de 100 para 70)
+  const totalWidth = 70 + 280 + 60 + 60 + 120 + 120 + 120 + 120 + 70 + (readOnly ? 0 : 70);
 
   return (
     <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -460,7 +459,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
           <div className="w-[120px] text-right py-3 px-2 text-slate-900 bg-slate-100 flex-shrink-0">Total Orig.</div>
           <div className="w-[120px] text-right py-3 px-2 text-[#A47528] bg-[#A47528]/10 flex-shrink-0">Total Meta</div>
           <div className="w-[70px] text-center py-3 text-slate-700 flex-shrink-0">%</div>
-          {!readOnly && <div className="w-[100px] text-center py-3 flex-shrink-0">Ações</div>}
+          {!readOnly && <div className="w-[70px] text-center py-3 flex-shrink-0">Ações</div>}
         </div>
 
         {/* Virtualized rows */}
@@ -520,7 +519,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
           </div>
         </div>
         <div className="w-[70px] flex-shrink-0" />
-        {!readOnly && <div className="w-[100px] flex-shrink-0" />}
+        {!readOnly && <div className="w-[70px] flex-shrink-0" />}
       </div>
     </div>
   );
