@@ -364,7 +364,7 @@ export default function Agenda() {
                     </div>
 
                     <div className="flex-1 flex flex-col gap-1.5 w-full">
-                      {dayEvents.map((event) => {
+                      {dayEvents.slice(0, 3).map((event) => {
                         const { isOverdue } = getEventStatus(event);
                         return (
                           <div
@@ -413,6 +413,11 @@ export default function Agenda() {
                           </div>
                         );
                       })}
+                      {dayEvents.length > 3 && (
+                        <span className="text-[10px] text-slate-500 font-medium px-2 py-1 hover:text-primary cursor-pointer">
+                          + {dayEvents.length - 3} mais
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
