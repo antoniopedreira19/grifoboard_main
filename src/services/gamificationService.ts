@@ -157,32 +157,37 @@ export const gamificationService = {
     });
   },
 
-  // Remove all XP earned from playbook for a specific obra
+  // Remove all XP earned from playbook for a specific obra (including contracting)
   async removePlaybookXP(userId: string, obraId: string) {
     try {
-      // Find all playbook-related logs for this obra
-      const { data: logs, error: fetchError } = await supabase
-        .from("gamification_logs")
-        .select("id, xp_amount")
-        .eq("user_id", userId)
-        .eq("action_type", "ECONOMIA_PLAYBOOK")
-        .like("reference_id", `${obraId}%`);
+      const actionTypes = ["ECONOMIA_PLAYBOOK", "CONTRATACAO_FAST"];
+      let totalXPToRemove = 0;
 
-      if (fetchError) throw fetchError;
-      if (!logs || logs.length === 0) return;
+      for (const actionType of actionTypes) {
+        // Find all logs for this action type and obra
+        const { data: logs, error: fetchError } = await supabase
+          .from("gamification_logs")
+          .select("id, xp_amount")
+          .eq("user_id", userId)
+          .eq("action_type", actionType)
+          .like("reference_id", `${obraId}%`);
 
-      // Calculate total XP to remove
-      const totalXPToRemove = logs.reduce((sum, log) => sum + (log.xp_amount || 0), 0);
+        if (fetchError) throw fetchError;
+        if (!logs || logs.length === 0) continue;
 
-      // Delete all playbook logs for this obra
-      const { error: deleteError } = await supabase
-        .from("gamification_logs")
-        .delete()
-        .eq("user_id", userId)
-        .eq("action_type", "ECONOMIA_PLAYBOOK")
-        .like("reference_id", `${obraId}%`);
+        // Calculate XP to remove for this action type
+        totalXPToRemove += logs.reduce((sum, log) => sum + (log.xp_amount || 0), 0);
 
-      if (deleteError) throw deleteError;
+        // Delete all logs for this action type and obra
+        const { error: deleteError } = await supabase
+          .from("gamification_logs")
+          .delete()
+          .eq("user_id", userId)
+          .eq("action_type", actionType)
+          .like("reference_id", `${obraId}%`);
+
+        if (deleteError) throw deleteError;
+      }
 
       // Update profile XP
       if (totalXPToRemove > 0) {
