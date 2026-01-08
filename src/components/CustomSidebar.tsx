@@ -20,7 +20,8 @@ import {
   LucideIcon,
   Bot,
   Target,
-  KanbanSquare, // Ícone para PMP
+  KanbanSquare,
+  Calendar, // Importado ícone de calendário
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ const CustomSidebar = () => {
       { path: "/pmp", label: "PMP", icon: KanbanSquare },
       { path: "/tarefas", label: "PCP", icon: LayoutDashboard },
       { path: "/diarioobra", label: "Diário de Obra", icon: FileText },
+      { path: "/agenda", label: "Agenda", icon: Calendar }, // Adicionado Agenda aqui
       { path: "/grifoway", label: "GrifoWay", customIcon: grifoIconGold },
       ...(isAdmin ? [{ path: "/gestao-metas", label: "Gestão de Metas", icon: Target }] : []),
       { path: "/marketplace", label: "Marketplace", icon: Store },
