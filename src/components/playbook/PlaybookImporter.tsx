@@ -117,22 +117,36 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
   };
 
-  // Função para converter números em formato brasileiro (1.234,56) para número
+  // Converte números em diferentes formatos (ex: "4.265,00" ou "4,265.00") para number
   const parseNumber = (value: any): number => {
     if (value === null || value === undefined || value === "") return 0;
-    if (typeof value === "number") return isNaN(value) ? 0 : value;
-    
-    const str = String(value).trim();
-    // Se tem vírgula como decimal (formato BR: 1.234,56)
-    if (str.includes(",")) {
-      // Remove pontos de milhar e troca vírgula por ponto
-      const normalized = str.replace(/\./g, "").replace(",", ".");
-      const num = parseFloat(normalized);
-      return isNaN(num) ? 0 : num;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+
+    const raw = String(value).trim();
+    // remove moeda, espaços e mantém apenas dígitos e separadores
+    const cleaned = raw.replace(/\s/g, "").replace(/[^\d.,-]/g, "");
+    if (!cleaned) return 0;
+
+    const lastDot = cleaned.lastIndexOf(".");
+    const lastComma = cleaned.lastIndexOf(",");
+
+    // Decide separador decimal pelo ÚLTIMO separador encontrado
+    let normalized = cleaned;
+    if (lastDot !== -1 && lastComma !== -1) {
+      const decimalIsDot = lastDot > lastComma;
+      normalized = decimalIsDot
+        ? cleaned.replace(/,/g, "") // 4,265.00 -> 4265.00
+        : cleaned.replace(/\./g, "").replace(",", "."); // 4.265,00 -> 4265.00
+    } else if (lastComma !== -1) {
+      // Assume vírgula como decimal
+      normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Apenas ponto (ou nenhum separador) -> parseFloat direto (e remove vírgulas se existirem)
+      normalized = cleaned.replace(/,/g, "");
     }
-    // Formato normal (1234.56)
-    const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+
+    const num = parseFloat(normalized);
+    return Number.isFinite(num) ? num : 0;
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,23 +161,59 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
+      const headerRow = Array.isArray(data[0]) ? data[0] : [];
+      const norm = (v: any) =>
+        String(v ?? "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const findCol = (needles: string[]) => {
+        const nNeedles = needles.map(norm);
+        return headerRow.findIndex((h) => {
+          const nh = norm(h);
+          if (!nh) return false;
+          return nNeedles.some((needle) => nh.includes(needle));
+        });
+      };
+
+      const idx = {
+        codigo: findCol(["codigo"]),
+        descricao: findCol(["descricao"]),
+        unidade: findCol(["unidade", "unid"]),
+        qtd: findCol(["quantidade orcada", "quantidade", "qtd"]),
+        mao: findCol(["mao de obra", "mao de obra"]),
+        materiais: findCol(["materiais"]),
+        equipamentos: findCol(["equipamentos"]),
+        verbas: findCol(["verbas", "taxas", "impostos"]),
+        precoTotal: findCol(["preco total", "preco total"]),
+      };
+
+      // Ajuda a debugar importações de planilhas externas
+      console.debug("[PlaybookImporter] colunas detectadas", idx, headerRow);
+
+      const get = (row: any[], i: number, fallback: number) => (i >= 0 ? row[i] : row[fallback]);
+
       const formatted: PlaybookItem[] = data
         .slice(1)
         .map((row, index) => {
-          const valorMaoDeObra = parseNumber(row[4]);
-          const valorMateriais = parseNumber(row[5]);
-          const valorEquipamentos = parseNumber(row[6]);
-          const valorVerbas = parseNumber(row[7]);
+          const valorMaoDeObra = parseNumber(get(row, idx.mao, 4));
+          const valorMateriais = parseNumber(get(row, idx.materiais, 5));
+          const valorEquipamentos = parseNumber(get(row, idx.equipamentos, 6));
+          const valorVerbas = parseNumber(get(row, idx.verbas, 7));
 
           const totalCalculado = valorMaoDeObra + valorMateriais + valorEquipamentos + valorVerbas;
-          const precoTotal = row[8] ? parseNumber(row[8]) : totalCalculado;
+          const precoTotalCell = get(row, idx.precoTotal, 8);
+          const precoTotal = precoTotalCell !== undefined && precoTotalCell !== "" ? parseNumber(precoTotalCell) : totalCalculado;
 
           return {
             id: index,
-            codigo: row[0] ? String(row[0]).trim() : "",
-            descricao: row[1] ? String(row[1]).trim() : "",
-            unidade: row[2] ? String(row[2]).trim() : "",
-            qtd: parseNumber(row[3]),
+            codigo: get(row, idx.codigo, 0) ? String(get(row, idx.codigo, 0)).trim() : "",
+            descricao: get(row, idx.descricao, 1) ? String(get(row, idx.descricao, 1)).trim() : "",
+            unidade: get(row, idx.unidade, 2) ? String(get(row, idx.unidade, 2)).trim() : "",
+            qtd: parseNumber(get(row, idx.qtd, 3)),
             valorMaoDeObra,
             valorMateriais,
             valorEquipamentos,
