@@ -117,6 +117,24 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     toast({ title: "Modelo baixado!", description: "Preencha a planilha e importe novamente." });
   };
 
+  // Função para converter números em formato brasileiro (1.234,56) para número
+  const parseNumber = (value: any): number => {
+    if (value === null || value === undefined || value === "") return 0;
+    if (typeof value === "number") return isNaN(value) ? 0 : value;
+    
+    const str = String(value).trim();
+    // Se tem vírgula como decimal (formato BR: 1.234,56)
+    if (str.includes(",")) {
+      // Remove pontos de milhar e troca vírgula por ponto
+      const normalized = str.replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(normalized);
+      return isNaN(num) ? 0 : num;
+    }
+    // Formato normal (1234.56)
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -132,20 +150,20 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       const formatted: PlaybookItem[] = data
         .slice(1)
         .map((row, index) => {
-          const valorMaoDeObra = row[4] ? Number(row[4]) : 0;
-          const valorMateriais = row[5] ? Number(row[5]) : 0;
-          const valorEquipamentos = row[6] ? Number(row[6]) : 0;
-          const valorVerbas = row[7] ? Number(row[7]) : 0;
+          const valorMaoDeObra = parseNumber(row[4]);
+          const valorMateriais = parseNumber(row[5]);
+          const valorEquipamentos = parseNumber(row[6]);
+          const valorVerbas = parseNumber(row[7]);
 
           const totalCalculado = valorMaoDeObra + valorMateriais + valorEquipamentos + valorVerbas;
-          const precoTotal = row[8] ? Number(row[8]) : totalCalculado;
+          const precoTotal = row[8] ? parseNumber(row[8]) : totalCalculado;
 
           return {
             id: index,
             codigo: row[0] ? String(row[0]).trim() : "",
             descricao: row[1] ? String(row[1]).trim() : "",
             unidade: row[2] ? String(row[2]).trim() : "",
-            qtd: row[3] ? Number(row[3]) : 0,
+            qtd: parseNumber(row[3]),
             valorMaoDeObra,
             valorMateriais,
             valorEquipamentos,
@@ -157,17 +175,19 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
         })
         .filter((item) => item.descricao !== "" || item.codigo !== "");
 
+      // Auto-detectar níveis baseado na estrutura do código
       const autoDetected = formatted.map((item) => {
         const isHeader = !item.qtd || item.qtd === 0;
         let nivel: 0 | 1 | 2 = 2;
 
         if (isHeader) {
-          const dots = (item.codigo.match(/\./g) || []).length;
-          if (dots === 0) nivel = 0;
-          else if (dots === 1) nivel = 1;
-          else nivel = 1;
+          // Contar segmentos no código (ex: "01" = 1, "01.001" = 2, "01.001.000" = 3)
+          const segments = item.codigo.split(".").filter(s => s.length > 0).length;
+          if (segments <= 1) nivel = 0; // Código simples = PRINCIPAL
+          else if (segments === 2) nivel = 0; // "01.001" = PRINCIPAL  
+          else nivel = 1; // Mais segmentos = SUB
         } else {
-          nivel = 2;
+          nivel = 2; // Tem quantidade = ITEM
         }
 
         return {
