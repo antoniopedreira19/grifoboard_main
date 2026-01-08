@@ -20,7 +20,6 @@ export type Database = {
           category: string | null;
           created_at: string;
           created_by: string | null;
-          completed: boolean; // Coluna adicionada
         };
         Insert: {
           id?: string;
@@ -33,7 +32,6 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           created_by?: string | null;
-          completed?: boolean; // Coluna adicionada
         };
         Update: {
           id?: string;
@@ -46,7 +44,6 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           created_by?: string | null;
-          completed?: boolean; // Coluna adicionada
         };
         Relationships: [
           {
@@ -65,7 +62,6 @@ export type Database = {
           },
         ];
       };
-      // ... restante do arquivo (atividades_checklist, etc) mantido igual
       atividades_checklist: {
         Row: {
           concluida: boolean;
@@ -1247,8 +1243,8 @@ export type Database = {
           responsavel?: string;
           sab?: string | null;
           seg?: string | null;
-          semana: string;
-          setor: string;
+          semana?: string;
+          setor?: string;
           sex?: string | null;
           ter?: string | null;
           updated_at?: string | null;
