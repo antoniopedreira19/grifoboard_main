@@ -56,16 +56,16 @@ export const playbookService = {
         obra_id: obraId,
         descricao: item.descricao || "",
         unidade: item.unidade || "",
-        qtd: item.qtd || 0,
-        preco_unitario: item.preco_unitario || 0,
-        preco_total: item.preco_total || 0,
-        is_etapa: item.is_etapa || false,
-        nivel: item.nivel || 2,
-        ordem: item.ordem || 0,
-        valor_mao_de_obra: item.valor_mao_de_obra || 0,
-        valor_materiais: item.valor_materiais || 0,
-        valor_equipamentos: item.valor_equipamentos || 0,
-        valor_verbas: item.valor_verbas || 0,
+        qtd: item.qtd ?? 0,
+        preco_unitario: item.preco_unitario ?? 0,
+        preco_total: item.preco_total ?? 0,
+        is_etapa: item.is_etapa ?? false,
+        nivel: item.nivel ?? 2, // Use ?? para preservar nivel 0
+        ordem: item.ordem ?? 0,
+        valor_mao_de_obra: item.valor_mao_de_obra ?? 0,
+        valor_materiais: item.valor_materiais ?? 0,
+        valor_equipamentos: item.valor_equipamentos ?? 0,
+        valor_verbas: item.valor_verbas ?? 0,
       }));
 
       const { error: insertError } = await supabase.from("playbook_items").insert(itemsToInsert);
