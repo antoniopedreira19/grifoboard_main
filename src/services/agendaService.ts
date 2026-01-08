@@ -54,4 +54,26 @@ export const agendaService = {
 
     return publicUrl;
   },
+
+  async deletarAnexo(anexoUrl: string, eventoId: string) {
+    // Extrai o path do arquivo da URL pública
+    const urlParts = anexoUrl.split('/agenda-anexos/');
+    if (urlParts.length > 1) {
+      const filePath = urlParts[1];
+      
+      const { error: deleteError } = await supabase.storage
+        .from("agenda-anexos")
+        .remove([filePath]);
+
+      if (deleteError) throw deleteError;
+    }
+
+    // Limpa a referência no evento
+    const { error } = await supabase
+      .from("agenda_events")
+      .update({ anexo_url: null })
+      .eq("id", eventoId);
+
+    if (error) throw error;
+  },
 };
