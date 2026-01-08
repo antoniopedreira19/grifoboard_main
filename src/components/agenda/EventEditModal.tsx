@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Paperclip, Upload, ExternalLink, FileText } from "lucide-react";
+import { Paperclip, Upload, ExternalLink, FileText, X } from "lucide-react";
 
 interface EventEditModalProps {
   event: AgendaEvent | null;
@@ -41,6 +41,7 @@ export function EventEditModal({
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -121,6 +122,21 @@ export function EventEditModal({
       toast({ title: "Erro", description: "Falha ao fazer upload do arquivo.", variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteAnexo = async () => {
+    if (!event.anexo_url) return;
+    
+    setDeleting(true);
+    try {
+      await agendaService.deletarAnexo(event.anexo_url, event.id);
+      toast({ description: "Anexo removido com sucesso!" });
+      onUpdate();
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao remover anexo.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -229,16 +245,28 @@ export function EventEditModal({
                 </Label>
                 
                 {event.anexo_url ? (
-                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border">
-                    <Paperclip className="w-4 h-4 text-slate-500" />
-                    <a 
-                      href={event.anexo_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="w-4 h-4 text-slate-500" />
+                      <a 
+                        href={event.anexo_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline flex items-center gap-1"
+                      >
+                        Ver anexo <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={handleDeleteAnexo}
+                      disabled={deleting}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
                     >
-                      Ver anexo <ExternalLink className="w-3 h-3" />
-                    </a>
+                      {deleting ? "..." : <X className="w-4 h-4" />}
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">

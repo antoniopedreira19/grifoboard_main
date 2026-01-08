@@ -24,6 +24,7 @@ import {
   Edit,
   Trash2,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ export function EventDetailModal({
   const [resumo, setResumo] = useState(event?.resumo || "");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!event) return null;
 
@@ -79,7 +81,22 @@ export function EventDetailModal({
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao fazer upload do arquivo.", variant: "destructive" });
     } finally {
-      setUploading(false);
+    setUploading(false);
+    }
+  };
+
+  const handleDeleteAnexo = async () => {
+    if (!event.anexo_url) return;
+    
+    setDeleting(true);
+    try {
+      await agendaService.deletarAnexo(event.anexo_url, event.id);
+      toast({ description: "Anexo removido com sucesso!" });
+      onUpdate();
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao remover anexo.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -185,16 +202,27 @@ export function EventDetailModal({
               </Label>
               
               {event.anexo_url ? (
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border">
-                  <Paperclip className="w-4 h-4 text-slate-500" />
-                  <a 
-                    href={event.anexo_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="w-4 h-4 text-slate-500" />
+                    <a 
+                      href={event.anexo_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      Ver anexo <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDeleteAnexo}
+                    disabled={deleting}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
                   >
-                    Ver anexo <ExternalLink className="w-3 h-3" />
-                  </a>
+                    {deleting ? "..." : <X className="w-4 h-4" />}
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
