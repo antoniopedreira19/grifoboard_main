@@ -65,7 +65,7 @@ export const usePmpData = () => {
     staleTime: STALE_TIME,
   });
 
-  // Memo: Semanas geradas a partir das datas da obra
+  // Memo: Semanas geradas a partir das datas da obra (somente até a data de término)
   const weeks = useMemo<PmpWeek[]>(() => {
     if (!obraAtiva?.data_inicio || !obraAtiva?.data_termino) return [];
 
@@ -75,11 +75,15 @@ export const usePmpData = () => {
     if (!start || !end) return [];
 
     const firstWeekStart = startOfWeek(start, { weekStartsOn: 1 });
-    const totalWeeks = Math.max(differenceInWeeks(end, firstWeekStart) + 2, 1);
     const weeksArray: PmpWeek[] = [];
+    let i = 0;
 
-    for (let i = 0; i < totalWeeks; i++) {
+    while (true) {
       const currentWeekStart = addDays(firstWeekStart, i * 7);
+      
+      // Para se o início da semana for após a data de término
+      if (currentWeekStart > end) break;
+      
       const weekEnd = addDays(currentWeekStart, 6);
       weeksArray.push({
         id: format(currentWeekStart, "yyyy-MM-dd"),
@@ -89,6 +93,7 @@ export const usePmpData = () => {
         end: weekEnd,
         formattedRange: `${format(currentWeekStart, "dd/MM")} - ${format(weekEnd, "dd/MM")}`,
       });
+      i++;
     }
 
     return weeksArray;
