@@ -84,18 +84,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         if (session && session.user) {
-          const newSessionId = generateSessionId();
-          setSessionId(newSessionId);
+          // IMPORTANT: Do NOT regenerate / overwrite a shared "current_session_id" on token refresh
+          // or when switching tabs. Multiple tabs share the same Supabase session.
+          const storedSessionId = localStorage.getItem("current_session_id");
+          const resolvedSessionId = storedSessionId ?? generateSessionId();
 
-          if (!handleSessionConflict(newSessionId)) {
-            localStorage.setItem("current_session_id", newSessionId);
-            localStorage.setItem("last_activity", Date.now().toString());
+          setSessionId(resolvedSessionId);
 
-            const obraAtiva = getInitialObraAtiva(session.user.id);
-            setUserSession({ user: mapUser(session.user), obraAtiva });
-
-            healthCheckInterval = setInterval(checkSessionHealth, 60000);
+          // Only set once (when missing) to avoid triggering storage events across tabs
+          if (!storedSessionId) {
+            localStorage.setItem("current_session_id", resolvedSessionId);
           }
+
+          // Track activity timestamp (shared) - ok to update across tabs
+          localStorage.setItem("last_activity", Date.now().toString());
+
+          const obraAtiva = getInitialObraAtiva(session.user.id);
+          setUserSession({ user: mapUser(session.user), obraAtiva });
+
+          healthCheckInterval = setInterval(checkSessionHealth, 60000);
         } else {
           setUserSession({ user: null, obraAtiva: null });
           setSessionId(null);
@@ -134,9 +141,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserSession({ user: null, obraAtiva: null });
         }
       } else if (session?.user) {
-        const newSessionId = generateSessionId();
-        setSessionId(newSessionId);
-        localStorage.setItem("current_session_id", newSessionId);
+        const storedSessionId = localStorage.getItem("current_session_id");
+        const resolvedSessionId = storedSessionId ?? generateSessionId();
+
+        setSessionId(resolvedSessionId);
+        if (!storedSessionId) {
+          localStorage.setItem("current_session_id", resolvedSessionId);
+        }
+        localStorage.setItem("last_activity", Date.now().toString());
 
         const obraAtiva = getInitialObraAtiva(session.user.id);
         setUserSession({ user: mapUser(session.user), obraAtiva });
@@ -165,8 +177,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      localStorage.removeItem("current_session_id");
-      localStorage.removeItem("last_activity");
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
