@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { 
   AlertDialog, 
@@ -11,57 +11,59 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle } from 'lucide-react';
 
+/**
+ * SessionConflictDetector - Detects when the user's session is invalidated
+ * by a logout in another tab/window (same browser).
+ * 
+ * NOTE: Multiple tabs in the same browser share the same session and should
+ * NOT be treated as conflicts. This component only detects actual logout events.
+ */
 const SessionConflictDetector = () => {
   const { userSession, signOut } = useAuth();
   const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [conflictDetails, setConflictDetails] = useState<string>('');
+  const wasLoggedInRef = useRef(false);
 
   useEffect(() => {
-    if (!userSession.user) return;
+    // Track if user was logged in
+    if (userSession?.user) {
+      wasLoggedInRef.current = true;
+    }
+  }, [userSession?.user]);
 
-    const checkForConflicts = () => {
-      const currentSessionId = localStorage.getItem('current_session_id');
-      const storedSessionIds = JSON.parse(localStorage.getItem('all_session_ids') || '[]');
-      
-      // Check if there are multiple session IDs stored
-      if (storedSessionIds.length > 1) {
-        const otherSessions = storedSessionIds.filter((id: string) => id !== currentSessionId);
-        if (otherSessions.length > 0) {
-          setConflictDetails(`Detectadas ${otherSessions.length} sessões adicionais ativas.`);
-          setShowConflictDialog(true);
-        }
-      }
-    };
-
-    // Initial check
-    checkForConflicts();
-
-    // Listen for storage changes from other tabs
+  useEffect(() => {
+    // Listen for logout events from other tabs
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'current_session_id' && e.newValue && e.oldValue && e.newValue !== e.oldValue) {
-        // Another tab/window just logged in with different session
-        setConflictDetails('Nova sessão detectada em outra aba ou dispositivo.');
+      // Detect when user logs out in another tab
+      if (e.key === 'supabase.auth.token' && e.newValue === null && wasLoggedInRef.current) {
+        // Session was cleared in another tab
+        setShowConflictDialog(true);
+      }
+      
+      // Also detect explicit logout signal
+      if (e.key === 'logout_event' && e.newValue) {
         setShowConflictDialog(true);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Periodic check for conflicts
-    const interval = setInterval(checkForConflicts, 30000); // Check every 30 seconds
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
-  }, [userSession.user]);
+  }, []);
 
   const handleForceLogout = async () => {
     setShowConflictDialog(false);
     await signOut();
   };
 
-  if (!userSession.user) return null;
+  const handleContinue = () => {
+    setShowConflictDialog(false);
+    // Refresh the page to get latest auth state
+    window.location.reload();
+  };
+
+  if (!showConflictDialog) return null;
 
   return (
     <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
@@ -69,29 +71,25 @@ const SessionConflictDetector = () => {
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
-            <AlertDialogTitle>Conflito de Sessão Detectado</AlertDialogTitle>
+            <AlertDialogTitle>Sessão Encerrada</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-left">
-            {conflictDetails}
-            {' '}
-            Para evitar conflitos de dados e garantir a segurança da sua conta, 
-            recomendamos que você faça logout e login novamente.
-            {' '}
-            <strong>Dados não salvos podem ser perdidos.</strong>
+            Sua sessão foi encerrada em outra aba ou janela.
+            Por favor, faça login novamente para continuar.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
           <AlertDialogAction
             onClick={handleForceLogout}
-            className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+            className="bg-grifo-secondary hover:bg-grifo-secondary/90 text-white w-full sm:w-auto"
           >
-            Fazer Logout Agora
+            Ir para Login
           </AlertDialogAction>
           <AlertDialogAction
-            onClick={() => setShowConflictDialog(false)}
+            onClick={handleContinue}
             className="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
           >
-            Continuar (Não Recomendado)
+            Atualizar Página
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
