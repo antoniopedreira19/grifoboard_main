@@ -30,11 +30,10 @@ export const gamificationService = {
   async getRanking(empresaId?: string | null) {
     try {
       // Usar a função RPC que permite ver ranking global de todas empresas
-      const { data: rankingData, error: rankingError } = await supabase
-        .rpc("get_grifoway_ranking", {
-          p_empresa_id: empresaId || null,
-          p_limit: 20,
-        });
+      const { data: rankingData, error: rankingError } = await supabase.rpc("get_grifoway_ranking", {
+        p_empresa_id: empresaId || null,
+        p_limit: 20,
+      });
 
       if (rankingError) {
         console.error("Erro ao buscar ranking:", rankingError);
@@ -213,6 +212,7 @@ function formatActionName(action: string): string {
     CONTRATACAO_FAST: "Contratação Fechada",
     ECONOMIA_PLAYBOOK: "Economia Gerada na Obra 💰",
     PMP_ATIVIDADE_CONCLUIDA: "Atividade do PMP Concluída",
+    AGENDA_EVENTO_CONCLUIDO: "Compromisso de Agenda ✅",
   };
   return map[action] || action.replace(/_/g, " ");
 }
