@@ -5,9 +5,11 @@ export interface Obra {
   data_inicio: string;
   data_termino?: string;
   status: string;
-  usuario_id: string;
+  usuario_id?: string;
   created_at: string;
   pmp_planta_url?: string | null;
+  created_by?: string;
+  empresa_id?: string;
 }
 
 export interface Tarefa {

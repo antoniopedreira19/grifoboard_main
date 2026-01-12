@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -7,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { obrasService } from '@/services/obraService';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanyUsers } from '@/hooks/useCompanyUsers';
+import { useAuth } from '@/context/AuthContext';
 import { Obra } from '@/types/supabase';
 
 interface ObraEditFormProps {
@@ -17,11 +18,15 @@ interface ObraEditFormProps {
 }
 
 const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormProps) => {
+  const { userSession } = useAuth();
+  const { users, isLoading: isLoadingUsers } = useCompanyUsers();
+  
   const [nomeObra, setNomeObra] = useState('');
   const [localizacao, setLocalizacao] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataTermino, setDataTermino] = useState('');
   const [status, setStatus] = useState('em_andamento');
+  const [responsavel, setResponsavel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -32,6 +37,7 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
       setDataInicio(obra.data_inicio ? obra.data_inicio.split('T')[0] : '');
       setDataTermino(obra.data_termino ? obra.data_termino.split('T')[0] : '');
       setStatus(obra.status || 'em_andamento');
+      setResponsavel(obra.created_by || '');
     }
   }, [obra]);
 
@@ -41,6 +47,7 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
     setDataInicio('');
     setDataTermino('');
     setStatus('em_andamento');
+    setResponsavel('');
     setIsSubmitting(false);
   };
   
@@ -54,12 +61,13 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
     setIsSubmitting(true);
     
     try {
-      const obraAtualizada = {
+      const obraAtualizada: Partial<Obra> = {
         nome_obra: nomeObra,
         localizacao,
         data_inicio: dataInicio,
-        data_termino: dataTermino || null,
-        status
+        data_termino: dataTermino || undefined,
+        status,
+        created_by: responsavel || obra.created_by,
       };
       
       await obrasService.atualizarObra(obra.id, obraAtualizada);
@@ -84,6 +92,15 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
       setIsSubmitting(false);
     }
   };
+
+  // Ordenar usuários e incluir o próprio usuário logado no topo
+  const sortedUsers = [...users].sort((a, b) => {
+    // Usuário atual fica no topo
+    if (a.id === userSession?.user?.id) return -1;
+    if (b.id === userSession?.user?.id) return 1;
+    // Depois ordena por nome
+    return (a.nome || a.email || "").localeCompare(b.nome || b.email || "");
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -147,6 +164,23 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
               onChange={(e) => setDataTermino(e.target.value)}
               min={dataInicio}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="responsavel">Responsável pela Obra</Label>
+            <Select value={responsavel} onValueChange={setResponsavel}>
+              <SelectTrigger id="responsavel">
+                <SelectValue placeholder={isLoadingUsers ? "Carregando..." : "Selecione o responsável"} />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.nome || user.email || "Usuário sem nome"}
+                    {user.id === userSession?.user?.id && " (Eu)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
