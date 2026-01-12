@@ -37,10 +37,10 @@ export const agendaService = {
 
     if (error) throw error;
 
-    // Tenta adicionar XP, mas não bloqueia se falhar
+    // Tenta adicionar XP
     try {
-      // Valor sugerido: 50 XP. Ajuste conforme sua regra de negócio.
-      await gamificationService.adicionarXP(userId, 50, "conclusao_evento");
+      // CORREÇÃO: Usando awardXP (userId, action, amount, referenceId)
+      await gamificationService.awardXP(userId, "AGENDA_EVENTO_CONCLUIDO", 50, id);
     } catch (xpError) {
       console.error("Erro ao computar XP:", xpError);
     }
