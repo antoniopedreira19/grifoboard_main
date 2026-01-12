@@ -1,10 +1,10 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Obra } from "@/types/supabase";
-import { MapPin } from "lucide-react";
+import { MapPin, User } from "lucide-react";
 
 interface ObraCardProps {
-  obra: Obra;
+  obra: Obra & { responsavel_nome?: string };
   onSelect: (obra: Obra) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
   onEdit?: (obra: Obra, e: React.MouseEvent) => void;
@@ -67,13 +67,12 @@ const ObraCard = ({ obra, onSelect, onDelete, onEdit }: ObraCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="pb-2 flex-1">
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-gray-700 space-y-1">
           <div className="flex justify-between items-center">
             <span className="text-gray-500">Início:</span>
-            {/* Correção aplicada aqui usando a função formatDate */}
             <span>{formatDate(obra.data_inicio)}</span>
           </div>
-          <div className="flex justify-between items-center mt-1">
+          <div className="flex justify-between items-center">
             <span className="text-gray-500">Status:</span>
             <span className="capitalize">
               {obra.status === "em_andamento"
@@ -85,6 +84,17 @@ const ObraCard = ({ obra, onSelect, onDelete, onEdit }: ObraCardProps) => {
                     : obra.status}
             </span>
           </div>
+          {obra.responsavel_nome && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 flex items-center gap-1">
+                <User className="h-3 w-3" />
+                Responsável:
+              </span>
+              <span className="truncate max-w-[120px]" title={obra.responsavel_nome}>
+                {obra.responsavel_nome}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="mt-auto">

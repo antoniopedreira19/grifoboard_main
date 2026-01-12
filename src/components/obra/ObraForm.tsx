@@ -54,7 +54,7 @@ const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
         data_inicio: dataInicio,
         data_termino: dataTermino || undefined,
         status,
-        created_by: responsavel || userSession?.user?.id,
+        usuario_id: responsavel || userSession?.user?.id,
       };
 
       await obrasService.criarObra(novaObra);

@@ -37,7 +37,7 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
       setDataInicio(obra.data_inicio ? obra.data_inicio.split('T')[0] : '');
       setDataTermino(obra.data_termino ? obra.data_termino.split('T')[0] : '');
       setStatus(obra.status || 'em_andamento');
-      setResponsavel(obra.created_by || '');
+      setResponsavel(obra.usuario_id || '');
     }
   }, [obra]);
 
@@ -67,7 +67,7 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
         data_inicio: dataInicio,
         data_termino: dataTermino || undefined,
         status,
-        created_by: responsavel || obra.created_by,
+        usuario_id: responsavel || obra.usuario_id,
       };
       
       await obrasService.atualizarObra(obra.id, obraAtualizada);
