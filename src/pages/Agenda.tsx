@@ -16,6 +16,7 @@ import {
   endOfWeek,
   isBefore,
   endOfDay,
+  addHours, // Importado addHours
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -187,11 +188,12 @@ export default function Agenda() {
     }
   };
 
-  // Helper para verificar status
+  // Helper para verificar status com tolerância
   const getEventStatus = (event: AgendaEvent) => {
     const now = new Date();
-    // Considera atrasado se a data final já passou e não está completo
-    const isOverdue = !event.completed && isBefore(parseISO(event.end_date), now);
+    // Considera atrasado se a data final + 1 hora de tolerância já passou e não está completo
+    const limitDate = addHours(parseISO(event.end_date), 1);
+    const isOverdue = !event.completed && isBefore(limitDate, now);
 
     return { isOverdue };
   };
@@ -329,7 +331,6 @@ export default function Agenda() {
               ))}
             </div>
 
-            {/* AUMENTADO AQUI: minmax(160px -> 220px) */}
             <div className="grid grid-cols-7 auto-rows-[minmax(220px,1fr)]">
               {calendarDays.map((day, idx) => {
                 const dayEvents = events.filter((e) => isSameDay(parseISO(e.start_date), day));
@@ -340,7 +341,6 @@ export default function Agenda() {
                   <div
                     key={day.toString()}
                     className={cn(
-                      // AUMENTADO AQUI: min-h-[160px] -> min-h-[220px]
                       "border-b border-r border-slate-100 p-2 flex flex-col gap-2 transition-colors min-h-[220px]",
                       !isCurrentMonth && "bg-slate-50/50 text-slate-400",
                       isTodayDate && "bg-blue-50/20",
@@ -366,7 +366,6 @@ export default function Agenda() {
                     </div>
 
                     <div className="flex-1 flex flex-col gap-1.5 w-full">
-                      {/* AUMENTADO AQUI: slice(0, 3) -> slice(0, 5) */}
                       {dayEvents.slice(0, 5).map((event) => {
                         const { isOverdue } = getEventStatus(event);
                         return (
@@ -416,7 +415,6 @@ export default function Agenda() {
                           </div>
                         );
                       })}
-                      {/* AJUSTADO AQUI: cálculo para + mais */}
                       {dayEvents.length > 5 && (
                         <span className="text-[10px] text-slate-500 font-medium px-2 py-1 hover:text-primary cursor-pointer">
                           + {dayEvents.length - 5} mais
