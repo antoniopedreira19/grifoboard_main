@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { FolderOpen } from "lucide-react";
 
 interface ObrasListProps {
-  obras: Obra[];
+  obras: (Obra & { responsavel_nome?: string })[];
   isLoading: boolean;
   onSelectObra: (obra: Obra) => void;
   onDeleteObra: (id: string, e: React.MouseEvent) => void;

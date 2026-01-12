@@ -9,20 +9,27 @@ class ObraServiceError extends Error {
 }
 
 export const obrasService = {
-  async listarObras(): Promise<Obra[]> {
+  async listarObras(): Promise<(Obra & { responsavel_nome?: string })[]> {
     const { data, error } = await supabase
       .from('obras')
-      .select('id, nome_obra, localizacao, status, data_inicio, data_termino, created_at, usuario_id')
+      .select(`
+        id, nome_obra, localizacao, status, data_inicio, data_termino, created_at, usuario_id, created_by, empresa_id,
+        usuarios:usuario_id (nome, email)
+      `)
       .order('created_at', { ascending: false });
     
     if (error) {
       throw new ObraServiceError('Erro ao listar obras', error);
     }
     
-    return data ?? [];
+    // Mapear para incluir nome do responsável
+    return (data ?? []).map(obra => ({
+      ...obra,
+      responsavel_nome: (obra.usuarios as any)?.nome || (obra.usuarios as any)?.email || null
+    }));
   },
 
-  async criarObra(obra: Omit<Obra, 'id' | 'created_at'> & { created_by?: string }): Promise<Obra> {
+  async criarObra(obra: Omit<Obra, 'id' | 'created_at'> & { usuario_id?: string }): Promise<Obra> {
     if (!obra.nome_obra?.trim()) {
       throw new ObraServiceError('Nome da obra é obrigatório');
     }
@@ -50,7 +57,8 @@ export const obrasService = {
       data_inicio: obra.data_inicio || null,
       data_termino: obra.data_termino || null,
       status: obra.status || 'em_andamento',
-      created_by: obra.created_by || user.id,
+      usuario_id: obra.usuario_id || user.id,
+      created_by: user.id,
       empresa_id: userData?.empresa_id || null,
     };
     
