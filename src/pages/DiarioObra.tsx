@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { diarioService, type DiarioObra as DiarioObraRecord } from "@/services/diarioService";
@@ -52,6 +53,7 @@ import { PhotoGallery } from "@/components/diario/PhotoGallery";
 
 const DiarioObra = () => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { userSession } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = useState<Date>(new Date());
@@ -94,23 +96,21 @@ const DiarioObra = () => {
   }, [date, obraId]);
 
   // === VERIFICAÇÃO DE OBRA SELECIONADA ===
-  // Se não houver obra selecionada, mostra a tela de seleção
+  // Se não houver obra selecionada, mostra a tela de seleção (igual às outras abas)
   if (!obraId) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-lg border border-slate-100 max-w-md">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-lg border border-slate-100">
           <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center">
             <BookOpen className="h-8 w-8 text-slate-400" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Selecione uma Obra</h2>
-          <p className="text-slate-600 text-sm">
-            Para preencher o Diário de Obra, primeiro selecione uma obra no menu lateral ou na página de obras.
-          </p>
+          <h2 className="text-2xl font-bold text-slate-800">Nenhuma obra selecionada</h2>
+          <p className="text-slate-600">Selecione uma obra para continuar.</p>
           <Button
-            onClick={() => window.location.href = "/obras"}
+            onClick={() => navigate("/obras")}
             className="px-6 py-3 bg-[#C7A347] text-white rounded-xl font-semibold hover:bg-[#B7943F] transition-colors"
           >
-            Ir para Obras
+            Selecionar Obra
           </Button>
         </div>
       </div>
