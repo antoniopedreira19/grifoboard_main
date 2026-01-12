@@ -134,6 +134,11 @@ const Playbook = () => {
 
   const silentRefetch = useCallback(() => fetchPlaybook(true), [fetchPlaybook]);
 
+  // Optimistic update handler - updates local state immediately
+  const handleOptimisticUpdate = useCallback((itemId: string, field: string, value: string) => {
+    setRawItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
+  }, []);
+
   const saveCoeficienteConfig = useCallback(async () => {
     if (!obraId) return;
     setIsSavingConfig(true);
@@ -315,6 +320,7 @@ const Playbook = () => {
                 grandTotalOriginal={processedData.grandTotalOriginal}
                 grandTotalMeta={processedData.grandTotalMeta}
                 onUpdate={silentRefetch}
+                onOptimisticUpdate={handleOptimisticUpdate}
               />
             </TabsContent>
 
