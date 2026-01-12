@@ -98,45 +98,44 @@ const Playbook = () => {
     return { items: finalItems as any[], grandTotalMeta, grandTotalOriginal };
   }, [rawItems, activeCoef]);
 
-  const fetchPlaybook = useCallback(
-    async (silent = false) => {
-      if (!obraId) {
-        setIsLoading(false);
+  const fetchPlaybook = useCallback(async (silent = false) => {
+    if (!obraId) {
+      setIsLoading(false);
+      setRawItems([]);
+      return;
+    }
+    if (!silent) setIsLoading(true);
+    try {
+      const { config, items } = await playbookService.getPlaybook(obraId);
+
+      if (!items || items.length === 0) {
         setRawItems([]);
         return;
       }
-      if (!silent) setIsLoading(true);
-      try {
-        const { config, items } = await playbookService.getPlaybook(obraId);
 
-        if (!items || items.length === 0) {
-          setRawItems([]);
-          return;
-        }
+      const c1 = config?.coeficiente_1 || 0.57;
+      const c2 = config?.coeficiente_2 || 0.75;
+      const selected = (config?.coeficiente_selecionado as "1" | "2") || "1";
 
-        const c1 = config?.coeficiente_1 || 0.57;
-        const c2 = config?.coeficiente_2 || 0.75;
-        const selected = (config?.coeficiente_selecionado as "1" | "2") || "1";
-
-        setCoeficiente1(c1);
-        setCoeficiente2(c2);
-        setCoeficienteSelecionado(selected);
-        setRawItems(items);
-      } catch (error) {
-        console.error(error);
-        toast({ title: "Erro", description: "Falha ao carregar dados.", variant: "destructive" });
-      } finally {
-        if (!silent) setIsLoading(false);
-      }
-    },
-    [obraId, toast],
-  );
+      setCoeficiente1(c1);
+      setCoeficiente2(c2);
+      setCoeficienteSelecionado(selected);
+      setRawItems(items);
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Erro", description: "Falha ao carregar dados.", variant: "destructive" });
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  }, [obraId, toast]);
 
   const silentRefetch = useCallback(() => fetchPlaybook(true), [fetchPlaybook]);
 
   // Optimistic update handler - updates local state immediately
   const handleOptimisticUpdate = useCallback((itemId: string, field: string, value: string) => {
-    setRawItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
+    setRawItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, [field]: value } : item
+    ));
   }, []);
 
   const saveCoeficienteConfig = useCallback(async () => {
@@ -268,7 +267,7 @@ const Playbook = () => {
                         <Settings2 className="h-4 w-4 text-primary" />
                         <span className="text-sm font-semibold">Configuração de Coeficientes</span>
                       </div>
-
+                      
                       <RadioGroup
                         value={coeficienteSelecionado}
                         onValueChange={(v) => setCoeficienteSelecionado(v as "1" | "2")}
@@ -276,9 +275,7 @@ const Playbook = () => {
                       >
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value="1" id="coef1" />
-                          <Label htmlFor="coef1" className="text-sm">
-                            Coef. 1
-                          </Label>
+                          <Label htmlFor="coef1" className="text-sm">Coef. 1</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -289,9 +286,7 @@ const Playbook = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value="2" id="coef2" />
-                          <Label htmlFor="coef2" className="text-sm">
-                            Coef. 2
-                          </Label>
+                          <Label htmlFor="coef2" className="text-sm">Coef. 2</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -301,8 +296,13 @@ const Playbook = () => {
                           />
                         </div>
                       </RadioGroup>
-
-                      <Button size="sm" variant="outline" onClick={saveCoeficienteConfig} disabled={isSavingConfig}>
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={saveCoeficienteConfig}
+                        disabled={isSavingConfig}
+                      >
                         {isSavingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                         Salvar Config
                       </Button>
