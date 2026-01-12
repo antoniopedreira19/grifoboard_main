@@ -15,7 +15,6 @@ import {
   startOfWeek,
   endOfWeek,
   isBefore,
-  endOfDay,
   addHours,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,9 +32,12 @@ import {
   XCircle,
   FileWarning,
   Undo2,
+  TrendingUp,
+  Ban,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,11 +45,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EventDetailModal } from "@/components/agenda/EventDetailModal";
 import { EventEditModal } from "@/components/agenda/EventEditModal";
+import { Progress } from "@/components/ui/progress";
 
 export default function Agenda() {
   const { userSession } = useAuth();
@@ -131,15 +133,11 @@ export default function Agenda() {
     }
   };
 
-  // --- NOVA LÓGICA DE AÇÕES ---
-
-  // 1. Concluir (Sucesso + XP)
   const handleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userSession?.user?.id) return;
 
     try {
-      // Atualização Otimista
       setEvents((prev) =>
         prev.map((ev) => (ev.id === event.id ? { ...ev, completed: true, justification: null } : ev)),
       );
@@ -152,7 +150,6 @@ export default function Agenda() {
     }
   };
 
-  // 2. Abrir Modal de Justificativa
   const openJustifyModal = (event: AgendaEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     setEventToJustify(event);
@@ -160,7 +157,6 @@ export default function Agenda() {
     setIsJustifyOpen(true);
   };
 
-  // 3. Salvar Justificativa (Sem XP)
   const handleSaveJustification = async () => {
     if (!eventToJustify || !justificationText.trim()) {
       toast({ title: "Atenção", description: "Escreva o motivo.", variant: "destructive" });
@@ -168,7 +164,6 @@ export default function Agenda() {
     }
 
     try {
-      // Atualização Otimista
       setEvents((prev) =>
         prev.map((ev) =>
           ev.id === eventToJustify.id ? { ...ev, completed: false, justification: justificationText } : ev,
@@ -187,7 +182,6 @@ export default function Agenda() {
     }
   };
 
-  // 4. Resetar Status
   const handleReset = async (event: AgendaEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -229,6 +223,20 @@ export default function Agenda() {
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentDate]);
 
+  // --- CÁLCULO DE ESTATÍSTICAS (TODOS OS EVENTOS) ---
+  const stats = useMemo(() => {
+    // Removemos o filtro de 'reuniao'. Agora conta tudo.
+    const total = events.length;
+
+    const completed = events.filter((e) => e.completed).length;
+    // "Deixou de fazer" = Total - Concluídos (pendentes, atrasados ou justificados)
+    const missed = total - completed;
+
+    const participationRate = total > 0 ? (completed / total) * 100 : 0;
+
+    return { total, completed, missed, participationRate };
+  }, [events]);
+
   const getCategoryColor = (cat: string, completed: boolean) => {
     if (completed) return "bg-slate-100 text-slate-400 border-slate-200 line-through decoration-slate-400";
 
@@ -246,17 +254,10 @@ export default function Agenda() {
     }
   };
 
-  // Helper para verificar status com tolerância e justificativa
   const getEventStatus = (event: AgendaEvent) => {
     const now = new Date();
-
-    // 1. Verifica se tem justificativa (se tiver, o evento está "resolvido" como não feito)
     const isJustified = !event.completed && !!event.justification;
-
-    // 2. Data limite com tolerância de 1 hora
     const limitDate = addHours(parseISO(event.end_date), 1);
-
-    // 3. Atrasado se: Data passou E não completou E não justificou
     const isOverdue = !event.completed && !isJustified && isBefore(limitDate, now);
 
     return { isOverdue, isJustified };
@@ -264,7 +265,56 @@ export default function Agenda() {
 
   return (
     <div className="container mx-auto p-4 max-w-[1600px] flex flex-col gap-4">
-      {/* Header */}
+      {/* SECTION: Indicadores Gerais */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="shadow-sm border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Total de Eventos</CardTitle>
+            <List className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
+            <p className="text-xs text-slate-500">Agendados no período</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Eventos Realizados</CardTitle>
+            <CheckSquare className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
+            <p className="text-xs text-slate-500">Concluídos com sucesso</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-red-400">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Não Realizados</CardTitle>
+            <Ban className="h-4 w-4 text-red-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.missed}</div>
+            <p className="text-xs text-slate-500">Pendentes ou Justificados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Taxa de Adesão</CardTitle>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-slate-800">{Math.round(stats.participationRate)}%</span>
+            </div>
+            <Progress value={stats.participationRate} className="h-2 mt-2" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Header & Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -460,7 +510,6 @@ export default function Agenda() {
                                   </span>
                                 </div>
 
-                                {/* Botões Compactos para o Card */}
                                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                   {!isJustified && !event.completed && (
                                     <button
@@ -492,7 +541,6 @@ export default function Agenda() {
                                 </div>
                               </div>
 
-                              {/* Status Badges no Card */}
                               {isOverdue && (
                                 <span className="text-[9px] font-bold text-red-600 flex items-center gap-1 mt-0.5">
                                   <AlertCircle className="w-2.5 h-2.5" /> Atrasado
@@ -562,7 +610,6 @@ export default function Agenda() {
                       <CardContent className="p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                         <div className="space-y-2 w-full">
                           <div className="flex items-center gap-3 flex-wrap">
-                            {/* BOTOES DE ACAO - LIST VIEW */}
                             {!isJustified && (
                               <button
                                 onClick={(e) => (event.completed ? handleReset(event, e) : handleComplete(event, e))}
@@ -663,7 +710,6 @@ export default function Agenda() {
         )}
       </div>
 
-      {/* MODAL DE JUSTIFICATIVA */}
       <Dialog open={isJustifyOpen} onOpenChange={setIsJustifyOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -690,7 +736,6 @@ export default function Agenda() {
         </DialogContent>
       </Dialog>
 
-      {/* Modais Existentes */}
       <EventDetailModal
         event={selectedEvent}
         open={isDetailOpen}
