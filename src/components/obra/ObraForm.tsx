@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { obrasService } from "@/services/obraService";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyUsers } from "@/hooks/useCompanyUsers";
+import { useAuth } from "@/context/AuthContext";
 import { X, Building2 } from "lucide-react";
 
 interface ObraFormProps {
@@ -15,11 +17,15 @@ interface ObraFormProps {
 }
 
 const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
+  const { userSession } = useAuth();
+  const { users, isLoading: isLoadingUsers } = useCompanyUsers();
+  
   const [nomeObra, setNomeObra] = useState("");
   const [localizacao, setLocalizacao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataTermino, setDataTermino] = useState("");
   const [status, setStatus] = useState("em_andamento");
+  const [responsavel, setResponsavel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -29,6 +35,7 @@ const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
     setDataInicio("");
     setDataTermino("");
     setStatus("em_andamento");
+    setResponsavel("");
     setIsSubmitting(false);
   };
 
@@ -45,8 +52,9 @@ const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
         nome_obra: nomeObra,
         localizacao,
         data_inicio: dataInicio,
-        data_termino: dataTermino || null,
+        data_termino: dataTermino || undefined,
         status,
+        created_by: responsavel || userSession?.user?.id,
       };
 
       await obrasService.criarObra(novaObra);
@@ -61,15 +69,25 @@ const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
       resetForm();
       onObraCriada();
     } catch (error: any) {
+      console.error("Erro ao criar obra:", error);
       toast({
         title: "Erro ao criar obra",
-        description: error.message,
+        description: error.message || "Ocorreu um erro ao criar a obra. Tente novamente.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Ordenar usuários e incluir o próprio usuário logado no topo
+  const sortedUsers = [...users].sort((a, b) => {
+    // Usuário atual fica no topo
+    if (a.id === userSession?.user?.id) return -1;
+    if (b.id === userSession?.user?.id) return 1;
+    // Depois ordena por nome
+    return (a.nome || a.email || "").localeCompare(b.nome || b.email || "");
+  });
 
   return (
     <Dialog
@@ -156,6 +174,25 @@ const ObraForm = ({ isOpen, onClose, onObraCriada }: ObraFormProps) => {
                 className="focus-visible:ring-grifo-secondary"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="responsavel" className="text-grifo-primary font-medium">
+              Responsável pela Obra
+            </Label>
+            <Select value={responsavel} onValueChange={setResponsavel}>
+              <SelectTrigger id="responsavel" className="focus:ring-grifo-secondary">
+                <SelectValue placeholder={isLoadingUsers ? "Carregando..." : "Selecione o responsável"} />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.nome || user.email || "Usuário sem nome"}
+                    {user.id === userSession?.user?.id && " (Eu)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

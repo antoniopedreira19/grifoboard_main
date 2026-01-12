@@ -22,7 +22,7 @@ export const obrasService = {
     return data ?? [];
   },
 
-  async criarObra(obra: Omit<Obra, 'id' | 'usuario_id' | 'created_at'>): Promise<Obra> {
+  async criarObra(obra: Omit<Obra, 'id' | 'created_at'> & { created_by?: string }): Promise<Obra> {
     if (!obra.nome_obra?.trim()) {
       throw new ObraServiceError('Nome da obra é obrigatório');
     }
@@ -32,19 +32,36 @@ export const obrasService = {
     if (!user) {
       throw new ObraServiceError('Usuário não autenticado');
     }
+
+    // Buscar empresa_id do usuário atual
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (userError) {
+      throw new ObraServiceError('Erro ao buscar dados do usuário', userError);
+    }
     
-    const obraWithUserId = {
-      ...obra,
-      usuario_id: user.id
+    const obraToCreate = {
+      nome_obra: obra.nome_obra,
+      localizacao: obra.localizacao || null,
+      data_inicio: obra.data_inicio || null,
+      data_termino: obra.data_termino || null,
+      status: obra.status || 'em_andamento',
+      created_by: obra.created_by || user.id,
+      empresa_id: userData?.empresa_id || null,
     };
     
     const { data, error } = await supabase
       .from('obras')
-      .insert([obraWithUserId])
+      .insert([obraToCreate])
       .select()
       .single();
     
     if (error) {
+      console.error('Erro ao criar obra:', error);
       throw new ObraServiceError('Erro ao criar obra', error);
     }
 
