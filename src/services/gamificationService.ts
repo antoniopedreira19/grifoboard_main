@@ -73,7 +73,6 @@ export const gamificationService = {
   // 4. Dar XP (Positivo)
   async awardXP(userId: string, action: string, amount: number, referenceId?: string) {
     try {
-      // Verifica se já existe um log para essa ação/referência para evitar XP duplicado
       if (referenceId) {
         const { data: existing } = await supabase
           .from("gamification_logs")
@@ -100,7 +99,7 @@ export const gamificationService = {
       toast({
         title: `+${amount} XP Conquistado! 🦅`,
         description: `Ação: ${formatActionName(action)}`,
-        variant: "gold" as any, // Cast necessário se "gold" não estiver na tipagem padrão do ToastVariant
+        variant: "gold",
         duration: 3000,
       });
     } catch (error) {
@@ -109,30 +108,28 @@ export const gamificationService = {
   },
 
   // 5. Remover XP (Quando desfaz uma ação)
-  async removeXP(userId: string, actionToCheck: string, referenceId: string) {
+  async removeXP(userId: string, actionToCheck: string, amountToRemove: number, referenceId: string) {
     try {
-      // 1. Achar o log original para saber quanto XP foi dado
       const { data: existingLog } = await supabase
         .from("gamification_logs")
-        .select("id, xp_amount")
+        .select("id")
         .eq("user_id", userId)
         .eq("reference_id", referenceId)
         .eq("action_type", actionToCheck)
         .maybeSingle();
 
-      if (!existingLog) return; // Se não tem log, não faz nada.
+      if (existingLog) {
+        await supabase.from("gamification_logs").delete().eq("id", existingLog.id);
+      } else {
+        return;
+      }
 
-      // 2. Deletar o log
-      await supabase.from("gamification_logs").delete().eq("id", existingLog.id);
-
-      // 3. Subtrair do perfil do usuário
-      // Se xp_amount for 50, subtrai 50.
-      await this.updateProfileXP(userId, -Math.abs(existingLog.xp_amount));
+      await this.updateProfileXP(userId, -Math.abs(amountToRemove));
 
       toast({
         title: `XP Revertido`,
         description: "Status alterado. Continue focado!",
-        variant: "destructive", // Vermelho para indicar remoção
+        variant: "destructive",
         duration: 3000,
       });
     } catch (error) {
@@ -148,7 +145,6 @@ export const gamificationService = {
       .maybeSingle();
 
     const currentXP = profile?.xp_total || 0;
-    // Garante que não fica negativo
     const newXP = Math.max(0, currentXP + amountToAdd);
     const newLevel = Math.floor(newXP / 1000) + 1;
 
