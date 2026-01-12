@@ -223,15 +223,11 @@ export default function Agenda() {
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentDate]);
 
-  // --- CÁLCULO DE ESTATÍSTICAS (TODOS OS EVENTOS) ---
+  // --- CÁLCULO DE ESTATÍSTICAS ---
   const stats = useMemo(() => {
-    // Removemos o filtro de 'reuniao'. Agora conta tudo.
     const total = events.length;
-
     const completed = events.filter((e) => e.completed).length;
-    // "Deixou de fazer" = Total - Concluídos (pendentes, atrasados ou justificados)
     const missed = total - completed;
-
     const participationRate = total > 0 ? (completed / total) * 100 : 0;
 
     return { total, completed, missed, participationRate };
@@ -265,56 +261,7 @@ export default function Agenda() {
 
   return (
     <div className="container mx-auto p-4 max-w-[1600px] flex flex-col gap-4">
-      {/* SECTION: Indicadores Gerais */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-sm border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total de Eventos</CardTitle>
-            <List className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-            <p className="text-xs text-slate-500">Agendados no período</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Eventos Realizados</CardTitle>
-            <CheckSquare className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
-            <p className="text-xs text-slate-500">Concluídos com sucesso</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-l-4 border-l-red-400">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Não Realizados</CardTitle>
-            <Ban className="h-4 w-4 text-red-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.missed}</div>
-            <p className="text-xs text-slate-500">Pendentes ou Justificados</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Taxa de Adesão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-slate-800">{Math.round(stats.participationRate)}%</span>
-            </div>
-            <Progress value={stats.participationRate} className="h-2 mt-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Header & Controls */}
+      {/* 1. Header & Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -412,7 +359,56 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* 2. SECTION: Indicadores (Abaixo do Título) */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="shadow-sm border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Total de Eventos</CardTitle>
+            <List className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
+            <p className="text-xs text-slate-500">Agendados no período</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Realizados</CardTitle>
+            <CheckSquare className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
+            <p className="text-xs text-slate-500">Concluídos com sucesso</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-red-400">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Não Realizados</CardTitle>
+            <Ban className="h-4 w-4 text-red-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.missed}</div>
+            <p className="text-xs text-slate-500">Pendentes ou Justificados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Taxa de Adesão</CardTitle>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-slate-800">{Math.round(stats.participationRate)}%</span>
+            </div>
+            <Progress value={stats.participationRate} className="h-2 mt-2" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 3. Main Content Area */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-10">
