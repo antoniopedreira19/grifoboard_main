@@ -93,6 +93,30 @@ const DiarioObra = () => {
     }
   }, [date, obraId]);
 
+  // === VERIFICAÇÃO DE OBRA SELECIONADA ===
+  // Se não houver obra selecionada, mostra a tela de seleção
+  if (!obraId) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-lg border border-slate-100 max-w-md">
+          <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center">
+            <BookOpen className="h-8 w-8 text-slate-400" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800">Selecione uma Obra</h2>
+          <p className="text-slate-600 text-sm">
+            Para preencher o Diário de Obra, primeiro selecione uma obra no menu lateral ou na página de obras.
+          </p>
+          <Button
+            onClick={() => window.location.href = "/obras"}
+            className="px-6 py-3 bg-[#C7A347] text-white rounded-xl font-semibold hover:bg-[#B7943F] transition-colors"
+          >
+            Ir para Obras
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // --- FUNÇÕES DE DADOS DO DIÁRIO ---
 
   const loadDiario = async () => {
@@ -155,7 +179,24 @@ const DiarioObra = () => {
   };
 
   const handleSave = async () => {
-    if (!obraId) return;
+    if (!obraId) {
+      toast({
+        title: "Erro",
+        description: "Nenhuma obra selecionada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação: atividades é obrigatório
+    if (!formData.atividades.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Preencha as atividades realizadas antes de salvar.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     const isNewDiario = !diarioId; // Marca se é novo ANTES de salvar
@@ -174,7 +215,7 @@ const DiarioObra = () => {
         clima: climaJson,
         mao_de_obra: formData.mao_de_obra,
         equipamentos: formData.equipamentos,
-        atividades: formData.atividades,
+        atividades: formData.atividades.trim(),
         ocorrencias: formData.ocorrencias,
         observacoes: formData.observacoes,
       });
