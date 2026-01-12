@@ -12,6 +12,10 @@ export interface AgendaEvent {
   completed: boolean | null;
   resumo?: string | null;
   anexo_url?: string | null;
+  justification?: string | null;
 }
 
-export type AgendaEventInsert = Omit<AgendaEvent, "id" | "created_by" | "completed" | "created_at" | "resumo" | "anexo_url">;
+export type AgendaEventInsert = Omit<
+  AgendaEvent,
+  "id" | "created_by" | "completed" | "created_at" | "resumo" | "anexo_url"
+>;
