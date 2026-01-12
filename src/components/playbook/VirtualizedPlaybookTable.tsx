@@ -182,8 +182,8 @@ const PlaybookRow = memo(function PlaybookRow({
         item.nivel === 1 && "bg-blue-50/10 text-blue-900",
       )}
     >
-      {/* Nível */}
-      <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
+      {/* Nível - ALTERADO: items-start e mt-0.5 para alinhar com o topo do texto da descrição */}
+      <div className="w-[70px] flex items-start justify-center py-2 flex-shrink-0 mt-0.5">
         {item.nivel === 0 && (
           <div className="flex items-center gap-1">
             {onToggleCollapse && (
@@ -222,7 +222,6 @@ const PlaybookRow = memo(function PlaybookRow({
             item.nivel === 2 && "pl-8 text-slate-600",
           )}
         >
-          {/* REMOVIDO: Ícones LayoutList, ListTree, Minus */}
           <span
             className="break-words whitespace-normal leading-tight line-clamp-2"
             title={item.descricao || item.etapa}
