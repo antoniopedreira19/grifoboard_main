@@ -10,22 +10,46 @@ class ObraServiceError extends Error {
 
 export const obrasService = {
   async listarObras(): Promise<(Obra & { responsavel_nome?: string })[]> {
-    const { data, error } = await supabase
+    // Primeiro busca as obras
+    const { data: obras, error } = await supabase
       .from('obras')
-      .select(`
-        id, nome_obra, localizacao, status, data_inicio, data_termino, created_at, usuario_id, created_by, empresa_id,
-        usuarios:usuario_id (nome, email)
-      `)
+      .select('id, nome_obra, localizacao, status, data_inicio, data_termino, created_at, usuario_id, created_by, empresa_id')
       .order('created_at', { ascending: false });
     
     if (error) {
+      console.error('Erro ao listar obras:', error);
       throw new ObraServiceError('Erro ao listar obras', error);
+    }
+
+    if (!obras || obras.length === 0) {
+      return [];
+    }
+
+    // Buscar os nomes dos responsáveis
+    const usuarioIds = [...new Set(obras.map(o => o.usuario_id).filter(Boolean))];
+    
+    let usuariosMap: Record<string, { nome: string | null; email: string | null }> = {};
+    
+    if (usuarioIds.length > 0) {
+      const { data: usuarios } = await supabase
+        .from('usuarios')
+        .select('id, nome, email')
+        .in('id', usuarioIds);
+      
+      if (usuarios) {
+        usuariosMap = usuarios.reduce((acc, u) => {
+          acc[u.id] = { nome: u.nome, email: u.email };
+          return acc;
+        }, {} as Record<string, { nome: string | null; email: string | null }>);
+      }
     }
     
     // Mapear para incluir nome do responsável
-    return (data ?? []).map(obra => ({
+    return obras.map(obra => ({
       ...obra,
-      responsavel_nome: (obra.usuarios as any)?.nome || (obra.usuarios as any)?.email || null
+      responsavel_nome: obra.usuario_id 
+        ? (usuariosMap[obra.usuario_id]?.nome || usuariosMap[obra.usuario_id]?.email || null)
+        : null
     }));
   },
 
