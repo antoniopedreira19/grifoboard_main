@@ -16,7 +16,7 @@ import {
   endOfWeek,
   isBefore,
   endOfDay,
-  addHours, // Importado addHours
+  addHours,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -30,6 +30,9 @@ import {
   CheckCircle2,
   Circle,
   AlertCircle,
+  XCircle,
+  FileWarning,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +62,11 @@ export default function Agenda() {
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Justification Modal State
+  const [isJustifyOpen, setIsJustifyOpen] = useState(false);
+  const [eventToJustify, setEventToJustify] = useState<AgendaEvent | null>(null);
+  const [justificationText, setJustificationText] = useState("");
 
   // Form States
   const [newEvent, setNewEvent] = useState({
@@ -123,22 +131,72 @@ export default function Agenda() {
     }
   };
 
-  const handleToggleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
-    e.stopPropagation(); // Previne abrir detalhes se tiver clique no card
+  // --- NOVA LÓGICA DE AÇÕES ---
+
+  // 1. Concluir (Sucesso + XP)
+  const handleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userSession?.user?.id) return;
+
     try {
-      const newStatus = !event.completed;
+      // Atualização Otimista
+      setEvents((prev) =>
+        prev.map((ev) => (ev.id === event.id ? { ...ev, completed: true, justification: null } : ev)),
+      );
 
-      // Atualização Otimista no Frontend
-      setEvents((prev) => prev.map((ev) => (ev.id === event.id ? { ...ev, completed: newStatus } : ev)));
-
-      await agendaService.toggleConclusao(event.id, newStatus);
-
-      if (newStatus) {
-        toast({ description: "Evento concluído!" });
-      }
+      await agendaService.concluirEvento(event.id, userSession.user.id);
+      toast({ title: "Concluído!", description: "Evento marcado como realizado." });
     } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível atualizar o status.", variant: "destructive" });
-      fetchEvents(); // Reverte em caso de erro
+      toast({ title: "Erro", description: "Falha ao concluir.", variant: "destructive" });
+      fetchEvents();
+    }
+  };
+
+  // 2. Abrir Modal de Justificativa
+  const openJustifyModal = (event: AgendaEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEventToJustify(event);
+    setJustificationText(event.justification || "");
+    setIsJustifyOpen(true);
+  };
+
+  // 3. Salvar Justificativa (Sem XP)
+  const handleSaveJustification = async () => {
+    if (!eventToJustify || !justificationText.trim()) {
+      toast({ title: "Atenção", description: "Escreva o motivo.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Atualização Otimista
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === eventToJustify.id ? { ...ev, completed: false, justification: justificationText } : ev,
+        ),
+      );
+
+      await agendaService.justificarNaoConclusao(eventToJustify.id, justificationText);
+
+      toast({ title: "Registrado", description: "Justificativa salva." });
+      setIsJustifyOpen(false);
+      setEventToJustify(null);
+      setJustificationText("");
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao salvar justificativa.", variant: "destructive" });
+      fetchEvents();
+    }
+  };
+
+  // 4. Resetar Status
+  const handleReset = async (event: AgendaEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setEvents((prev) =>
+        prev.map((ev) => (ev.id === event.id ? { ...ev, completed: false, justification: null } : ev)),
+      );
+      await agendaService.resetarStatus(event.id);
+    } catch (error) {
+      fetchEvents();
     }
   };
 
@@ -188,14 +246,20 @@ export default function Agenda() {
     }
   };
 
-  // Helper para verificar status com tolerância
+  // Helper para verificar status com tolerância e justificativa
   const getEventStatus = (event: AgendaEvent) => {
     const now = new Date();
-    // Considera atrasado se a data final + 1 hora de tolerância já passou e não está completo
-    const limitDate = addHours(parseISO(event.end_date), 1);
-    const isOverdue = !event.completed && isBefore(limitDate, now);
 
-    return { isOverdue };
+    // 1. Verifica se tem justificativa (se tiver, o evento está "resolvido" como não feito)
+    const isJustified = !event.completed && !!event.justification;
+
+    // 2. Data limite com tolerância de 1 hora
+    const limitDate = addHours(parseISO(event.end_date), 1);
+
+    // 3. Atrasado se: Data passou E não completou E não justificou
+    const isOverdue = !event.completed && !isJustified && isBefore(limitDate, now);
+
+    return { isOverdue, isJustified };
   };
 
   return (
@@ -367,7 +431,7 @@ export default function Agenda() {
 
                     <div className="flex-1 flex flex-col gap-1.5 w-full">
                       {dayEvents.slice(0, 5).map((event) => {
-                        const { isOverdue } = getEventStatus(event);
+                        const { isOverdue, isJustified } = getEventStatus(event);
                         return (
                           <div
                             key={event.id}
@@ -376,39 +440,72 @@ export default function Agenda() {
                               "text-xs px-2.5 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2 group relative",
                               getCategoryColor(event.category, event.completed),
                               isOverdue && "border-red-300 bg-red-50 text-red-700",
+                              isJustified && "border-red-200 bg-red-50/50 text-red-800",
                             )}
                             title={`${event.title} (${format(parseISO(event.start_date), "HH:mm")})`}
                           >
-                            {/* Checkbox Button */}
-                            <button
-                              onClick={(e) => handleToggleComplete(event, e)}
-                              className={cn(
-                                "shrink-0 transition-colors hover:scale-110",
-                                event.completed
-                                  ? "text-green-600"
-                                  : isOverdue
-                                    ? "text-red-500"
-                                    : "text-slate-400 hover:text-primary",
-                              )}
-                            >
-                              {event.completed ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                            </button>
-
                             <div className="flex flex-col min-w-0 flex-1">
-                              <div className="flex items-center gap-1">
-                                <span
-                                  className={cn(
-                                    "font-bold text-[10px] px-1 rounded",
-                                    event.completed ? "opacity-50" : "bg-white/50 opacity-100",
+                              <div className="flex items-center justify-between gap-1 w-full">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <span
+                                    className={cn(
+                                      "font-bold text-[10px] px-1 rounded shrink-0",
+                                      event.completed ? "opacity-50" : "bg-white/50 opacity-100",
+                                    )}
+                                  >
+                                    {format(parseISO(event.start_date), "HH:mm")}
+                                  </span>
+                                  <span className={cn("truncate", event.completed && "line-through text-slate-500")}>
+                                    {event.title}
+                                  </span>
+                                </div>
+
+                                {/* Botões Compactos para o Card */}
+                                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {!isJustified && !event.completed && (
+                                    <button
+                                      onClick={(e) => handleComplete(event, e)}
+                                      className="text-slate-400 hover:text-green-600"
+                                      title="Concluir"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                    </button>
                                   )}
-                                >
-                                  {format(parseISO(event.start_date), "HH:mm")}
-                                </span>
-                                <span className="truncate">{event.title}</span>
+                                  {!event.completed && !isJustified && (
+                                    <button
+                                      onClick={(e) => openJustifyModal(event, e)}
+                                      className="text-slate-400 hover:text-red-500"
+                                      title="Justificar"
+                                    >
+                                      <XCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {(event.completed || isJustified) && (
+                                    <button
+                                      onClick={(e) => handleReset(event, e)}
+                                      className="text-slate-400 hover:text-blue-500"
+                                      title="Desfazer"
+                                    >
+                                      <Undo2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Status Badges no Card */}
                               {isOverdue && (
-                                <span className="text-[9px] font-bold text-red-600 flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-red-600 flex items-center gap-1 mt-0.5">
                                   <AlertCircle className="w-2.5 h-2.5" /> Atrasado
+                                </span>
+                              )}
+                              {isJustified && (
+                                <span className="text-[9px] font-medium text-red-600 flex items-center gap-1 mt-0.5 italic">
+                                  <FileWarning className="w-2.5 h-2.5" /> Não realizado
+                                </span>
+                              )}
+                              {event.completed && (
+                                <span className="text-[9px] font-bold text-green-700 flex items-center gap-1 mt-0.5">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Concluído
                                 </span>
                               )}
                             </div>
@@ -436,7 +533,7 @@ export default function Agenda() {
                 </div>
               )}
               {events.map((event) => {
-                const { isOverdue } = getEventStatus(event);
+                const { isOverdue, isJustified } = getEventStatus(event);
 
                 return (
                   <div key={event.id} className="flex gap-4 group">
@@ -455,32 +552,56 @@ export default function Agenda() {
                         "flex-1 border-l-4 hover:shadow-md transition-all cursor-pointer",
                         event.completed
                           ? "border-l-green-500 bg-slate-50 opacity-70"
-                          : isOverdue
-                            ? "border-l-red-500 bg-red-50/10 border-red-200"
-                            : "border-l-primary",
+                          : isJustified
+                            ? "border-l-red-300 bg-red-50/20 border-red-200"
+                            : isOverdue
+                              ? "border-l-red-500 bg-red-50/10 border-red-200"
+                              : "border-l-primary",
                       )}
                     >
                       <CardContent className="p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                         <div className="space-y-2 w-full">
                           <div className="flex items-center gap-3 flex-wrap">
-                            <button
-                              onClick={(e) => handleToggleComplete(event, e)}
-                              className={cn(
-                                "shrink-0 transition-colors hover:scale-110 mr-2",
-                                event.completed
-                                  ? "text-green-600"
-                                  : isOverdue
-                                    ? "text-red-500"
-                                    : "text-slate-400 hover:text-primary",
-                              )}
-                            >
-                              {event.completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                            </button>
+                            {/* BOTOES DE ACAO - LIST VIEW */}
+                            {!isJustified && (
+                              <button
+                                onClick={(e) => (event.completed ? handleReset(event, e) : handleComplete(event, e))}
+                                className={cn(
+                                  "shrink-0 transition-colors hover:scale-110",
+                                  event.completed ? "text-green-600" : "text-slate-300 hover:text-green-500",
+                                )}
+                                title={event.completed ? "Desmarcar" : "Concluir (Ganha XP)"}
+                              >
+                                {event.completed ? (
+                                  <CheckCircle2 className="w-6 h-6" />
+                                ) : (
+                                  <Circle className="w-6 h-6" />
+                                )}
+                              </button>
+                            )}
+
+                            {!event.completed && (
+                              <button
+                                onClick={(e) => (isJustified ? handleReset(event, e) : openJustifyModal(event, e))}
+                                className={cn(
+                                  "shrink-0 transition-colors hover:scale-110 mr-2",
+                                  isJustified ? "text-red-600" : "text-slate-300 hover:text-red-500",
+                                )}
+                                title={isJustified ? "Remover justificativa" : "Justificar não realização"}
+                              >
+                                {isJustified ? (
+                                  <XCircle className="w-6 h-6" />
+                                ) : (
+                                  <XCircle className="w-6 h-6 opacity-50 hover:opacity-100" />
+                                )}
+                              </button>
+                            )}
 
                             <h3
                               className={cn(
                                 "font-bold text-xl",
-                                event.completed ? "text-slate-500 line-through" : "text-slate-800",
+                                event.completed || isJustified ? "text-slate-500" : "text-slate-800",
+                                event.completed && "line-through",
                               )}
                             >
                               {event.title}
@@ -503,6 +624,15 @@ export default function Agenda() {
                               >
                                 Atrasado
                               </Badge>
+                            )}
+
+                            {isJustified && (
+                              <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 ml-2">
+                                <FileWarning className="w-3 h-3" />
+                                <span className="italic truncate max-w-[300px]" title={event.justification || ""}>
+                                  {event.justification}
+                                </span>
+                              </div>
                             )}
                           </div>
                           {event.description && (
@@ -533,7 +663,34 @@ export default function Agenda() {
         )}
       </div>
 
-      {/* Modais */}
+      {/* MODAL DE JUSTIFICATIVA */}
+      <Dialog open={isJustifyOpen} onOpenChange={setIsJustifyOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Motivo da não conclusão</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Por que este evento não foi realizado?</Label>
+              <Textarea
+                placeholder="Ex: Chuva intensa, Cliente remarcou, Falta de material..."
+                value={justificationText}
+                onChange={(e) => setJustificationText(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsJustifyOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleSaveJustification}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modais Existentes */}
       <EventDetailModal
         event={selectedEvent}
         open={isDetailOpen}
@@ -542,7 +699,6 @@ export default function Agenda() {
         onDelete={handleDeleteEvent}
         onUpdate={() => {
           fetchEvents();
-          // Atualiza o selectedEvent com dados frescos
           if (selectedEvent) {
             const updated = events.find((e) => e.id === selectedEvent.id);
             if (updated) setSelectedEvent(updated);
