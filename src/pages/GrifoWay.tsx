@@ -14,8 +14,7 @@ import {
   Users,
   Loader2,
   ListTodo,
-  Handshake,
-  CalendarCheck, // Ícone importado para Agenda
+  Handshake, // <-- Ícone novo para o Playbook
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -421,19 +420,6 @@ const GrifoWay = () => {
                       </div>
                       <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100">
                         +30 XP
-                      </Badge>
-                    </div>
-
-                    {/* Item 7: Agenda (NOVO) */}
-                    <div className="flex items-center justify-between p-3 rounded-lg border bg-white border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-slate-100 text-slate-500">
-                          <CalendarCheck className="h-4 w-4" />
-                        </div>
-                        <span className="text-sm font-medium">Compromisso de Agenda</span>
-                      </div>
-                      <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100">
-                        +50 XP
                       </Badge>
                     </div>
                   </CardContent>

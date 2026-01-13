@@ -15,7 +15,8 @@ import {
   startOfWeek,
   endOfWeek,
   isBefore,
-  addHours,
+  endOfDay,
+  addHours, // Importado addHours
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -29,15 +30,9 @@ import {
   CheckCircle2,
   Circle,
   AlertCircle,
-  XCircle,
-  FileWarning,
-  Undo2,
-  TrendingUp,
-  Ban,
-  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,11 +40,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EventDetailModal } from "@/components/agenda/EventDetailModal";
 import { EventEditModal } from "@/components/agenda/EventEditModal";
-import { Progress } from "@/components/ui/progress";
 
 export default function Agenda() {
   const { userSession } = useAuth();
@@ -64,11 +59,6 @@ export default function Agenda() {
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-
-  // Justification Modal State
-  const [isJustifyOpen, setIsJustifyOpen] = useState(false);
-  const [eventToJustify, setEventToJustify] = useState<AgendaEvent | null>(null);
-  const [justificationText, setJustificationText] = useState("");
 
   // Form States
   const [newEvent, setNewEvent] = useState({
@@ -133,64 +123,22 @@ export default function Agenda() {
     }
   };
 
-  const handleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!userSession?.user?.id) return;
-
+  const handleToggleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
+    e.stopPropagation(); // Previne abrir detalhes se tiver clique no card
     try {
-      setEvents((prev) =>
-        prev.map((ev) => (ev.id === event.id ? { ...ev, completed: true, justification: null } : ev)),
-      );
+      const newStatus = !event.completed;
 
-      await agendaService.concluirEvento(event.id, userSession.user.id);
-      toast({ title: "Concluído!", description: "Evento marcado como realizado." });
+      // Atualização Otimista no Frontend
+      setEvents((prev) => prev.map((ev) => (ev.id === event.id ? { ...ev, completed: newStatus } : ev)));
+
+      await agendaService.toggleConclusao(event.id, newStatus);
+
+      if (newStatus) {
+        toast({ description: "Evento concluído!" });
+      }
     } catch (error) {
-      toast({ title: "Erro", description: "Falha ao concluir.", variant: "destructive" });
-      fetchEvents();
-    }
-  };
-
-  const openJustifyModal = (event: AgendaEvent, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEventToJustify(event);
-    setJustificationText(event.justification || "");
-    setIsJustifyOpen(true);
-  };
-
-  const handleSaveJustification = async () => {
-    if (!eventToJustify || !justificationText.trim()) {
-      toast({ title: "Atenção", description: "Escreva o motivo.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === eventToJustify.id ? { ...ev, completed: false, justification: justificationText } : ev,
-        ),
-      );
-
-      await agendaService.justificarNaoConclusao(eventToJustify.id, justificationText);
-
-      toast({ title: "Registrado", description: "Justificativa salva." });
-      setIsJustifyOpen(false);
-      setEventToJustify(null);
-      setJustificationText("");
-    } catch (error) {
-      toast({ title: "Erro", description: "Falha ao salvar justificativa.", variant: "destructive" });
-      fetchEvents();
-    }
-  };
-
-  const handleReset = async (event: AgendaEvent, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      setEvents((prev) =>
-        prev.map((ev) => (ev.id === event.id ? { ...ev, completed: false, justification: null } : ev)),
-      );
-      await agendaService.resetarStatus(event.id);
-    } catch (error) {
-      fetchEvents();
+      toast({ title: "Erro", description: "Não foi possível atualizar o status.", variant: "destructive" });
+      fetchEvents(); // Reverte em caso de erro
     }
   };
 
@@ -223,16 +171,6 @@ export default function Agenda() {
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentDate]);
 
-  // --- CÁLCULO DE ESTATÍSTICAS ---
-  const stats = useMemo(() => {
-    const total = events.length;
-    const completed = events.filter((e) => e.completed).length;
-    const missed = total - completed;
-    const participationRate = total > 0 ? (completed / total) * 100 : 0;
-
-    return { total, completed, missed, participationRate };
-  }, [events]);
-
   const getCategoryColor = (cat: string, completed: boolean) => {
     if (completed) return "bg-slate-100 text-slate-400 border-slate-200 line-through decoration-slate-400";
 
@@ -250,18 +188,19 @@ export default function Agenda() {
     }
   };
 
+  // Helper para verificar status com tolerância
   const getEventStatus = (event: AgendaEvent) => {
     const now = new Date();
-    const isJustified = !event.completed && !!event.justification;
+    // Considera atrasado se a data final + 1 hora de tolerância já passou e não está completo
     const limitDate = addHours(parseISO(event.end_date), 1);
-    const isOverdue = !event.completed && !isJustified && isBefore(limitDate, now);
+    const isOverdue = !event.completed && isBefore(limitDate, now);
 
-    return { isOverdue, isJustified };
+    return { isOverdue };
   };
 
   return (
     <div className="container mx-auto p-4 max-w-[1600px] flex flex-col gap-4">
-      {/* 1. Header & Controls */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -359,56 +298,7 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* 2. SECTION: Indicadores (Abaixo do Título) */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-sm border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total de Eventos</CardTitle>
-            <List className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-            <p className="text-xs text-slate-500">Agendados no período</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Realizados</CardTitle>
-            <CheckSquare className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
-            <p className="text-xs text-slate-500">Concluídos com sucesso</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-l-4 border-l-red-400">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Não Realizados</CardTitle>
-            <Ban className="h-4 w-4 text-red-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.missed}</div>
-            <p className="text-xs text-slate-500">Pendentes ou Justificados</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Taxa de Adesão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-slate-800">{Math.round(stats.participationRate)}%</span>
-            </div>
-            <Progress value={stats.participationRate} className="h-2 mt-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 3. Main Content Area */}
+      {/* Main Content Area */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-10">
@@ -477,7 +367,7 @@ export default function Agenda() {
 
                     <div className="flex-1 flex flex-col gap-1.5 w-full">
                       {dayEvents.slice(0, 5).map((event) => {
-                        const { isOverdue, isJustified } = getEventStatus(event);
+                        const { isOverdue } = getEventStatus(event);
                         return (
                           <div
                             key={event.id}
@@ -486,70 +376,39 @@ export default function Agenda() {
                               "text-xs px-2.5 py-1.5 rounded-md border shadow-sm truncate font-medium cursor-pointer transition-all flex items-center gap-2 group relative",
                               getCategoryColor(event.category, event.completed),
                               isOverdue && "border-red-300 bg-red-50 text-red-700",
-                              isJustified && "border-red-200 bg-red-50/50 text-red-800",
                             )}
                             title={`${event.title} (${format(parseISO(event.start_date), "HH:mm")})`}
                           >
+                            {/* Checkbox Button */}
+                            <button
+                              onClick={(e) => handleToggleComplete(event, e)}
+                              className={cn(
+                                "shrink-0 transition-colors hover:scale-110",
+                                event.completed
+                                  ? "text-green-600"
+                                  : isOverdue
+                                    ? "text-red-500"
+                                    : "text-slate-400 hover:text-primary",
+                              )}
+                            >
+                              {event.completed ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                            </button>
+
                             <div className="flex flex-col min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-1 w-full">
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <span
-                                    className={cn(
-                                      "font-bold text-[10px] px-1 rounded shrink-0",
-                                      event.completed ? "opacity-50" : "bg-white/50 opacity-100",
-                                    )}
-                                  >
-                                    {format(parseISO(event.start_date), "HH:mm")}
-                                  </span>
-                                  <span className={cn("truncate", event.completed && "line-through text-slate-500")}>
-                                    {event.title}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {!isJustified && !event.completed && (
-                                    <button
-                                      onClick={(e) => handleComplete(event, e)}
-                                      className="text-slate-400 hover:text-green-600"
-                                      title="Concluir"
-                                    >
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                    </button>
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className={cn(
+                                    "font-bold text-[10px] px-1 rounded",
+                                    event.completed ? "opacity-50" : "bg-white/50 opacity-100",
                                   )}
-                                  {!event.completed && !isJustified && (
-                                    <button
-                                      onClick={(e) => openJustifyModal(event, e)}
-                                      className="text-slate-400 hover:text-red-500"
-                                      title="Justificar"
-                                    >
-                                      <XCircle className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                  {(event.completed || isJustified) && (
-                                    <button
-                                      onClick={(e) => handleReset(event, e)}
-                                      className="text-slate-400 hover:text-blue-500"
-                                      title="Desfazer"
-                                    >
-                                      <Undo2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
+                                >
+                                  {format(parseISO(event.start_date), "HH:mm")}
+                                </span>
+                                <span className="truncate">{event.title}</span>
                               </div>
-
                               {isOverdue && (
-                                <span className="text-[9px] font-bold text-red-600 flex items-center gap-1 mt-0.5">
+                                <span className="text-[9px] font-bold text-red-600 flex items-center gap-1">
                                   <AlertCircle className="w-2.5 h-2.5" /> Atrasado
-                                </span>
-                              )}
-                              {isJustified && (
-                                <span className="text-[9px] font-medium text-red-600 flex items-center gap-1 mt-0.5 italic">
-                                  <FileWarning className="w-2.5 h-2.5" /> Não realizado
-                                </span>
-                              )}
-                              {event.completed && (
-                                <span className="text-[9px] font-bold text-green-700 flex items-center gap-1 mt-0.5">
-                                  <CheckCircle2 className="w-2.5 h-2.5" /> Concluído
                                 </span>
                               )}
                             </div>
@@ -577,7 +436,7 @@ export default function Agenda() {
                 </div>
               )}
               {events.map((event) => {
-                const { isOverdue, isJustified } = getEventStatus(event);
+                const { isOverdue } = getEventStatus(event);
 
                 return (
                   <div key={event.id} className="flex gap-4 group">
@@ -596,55 +455,32 @@ export default function Agenda() {
                         "flex-1 border-l-4 hover:shadow-md transition-all cursor-pointer",
                         event.completed
                           ? "border-l-green-500 bg-slate-50 opacity-70"
-                          : isJustified
-                            ? "border-l-red-300 bg-red-50/20 border-red-200"
-                            : isOverdue
-                              ? "border-l-red-500 bg-red-50/10 border-red-200"
-                              : "border-l-primary",
+                          : isOverdue
+                            ? "border-l-red-500 bg-red-50/10 border-red-200"
+                            : "border-l-primary",
                       )}
                     >
                       <CardContent className="p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                         <div className="space-y-2 w-full">
                           <div className="flex items-center gap-3 flex-wrap">
-                            {!isJustified && (
-                              <button
-                                onClick={(e) => (event.completed ? handleReset(event, e) : handleComplete(event, e))}
-                                className={cn(
-                                  "shrink-0 transition-colors hover:scale-110",
-                                  event.completed ? "text-green-600" : "text-slate-300 hover:text-green-500",
-                                )}
-                                title={event.completed ? "Desmarcar" : "Concluir (Ganha XP)"}
-                              >
-                                {event.completed ? (
-                                  <CheckCircle2 className="w-6 h-6" />
-                                ) : (
-                                  <Circle className="w-6 h-6" />
-                                )}
-                              </button>
-                            )}
-
-                            {!event.completed && (
-                              <button
-                                onClick={(e) => (isJustified ? handleReset(event, e) : openJustifyModal(event, e))}
-                                className={cn(
-                                  "shrink-0 transition-colors hover:scale-110 mr-2",
-                                  isJustified ? "text-red-600" : "text-slate-300 hover:text-red-500",
-                                )}
-                                title={isJustified ? "Remover justificativa" : "Justificar não realização"}
-                              >
-                                {isJustified ? (
-                                  <XCircle className="w-6 h-6" />
-                                ) : (
-                                  <XCircle className="w-6 h-6 opacity-50 hover:opacity-100" />
-                                )}
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => handleToggleComplete(event, e)}
+                              className={cn(
+                                "shrink-0 transition-colors hover:scale-110 mr-2",
+                                event.completed
+                                  ? "text-green-600"
+                                  : isOverdue
+                                    ? "text-red-500"
+                                    : "text-slate-400 hover:text-primary",
+                              )}
+                            >
+                              {event.completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                            </button>
 
                             <h3
                               className={cn(
                                 "font-bold text-xl",
-                                event.completed || isJustified ? "text-slate-500" : "text-slate-800",
-                                event.completed && "line-through",
+                                event.completed ? "text-slate-500 line-through" : "text-slate-800",
                               )}
                             >
                               {event.title}
@@ -667,15 +503,6 @@ export default function Agenda() {
                               >
                                 Atrasado
                               </Badge>
-                            )}
-
-                            {isJustified && (
-                              <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 ml-2">
-                                <FileWarning className="w-3 h-3" />
-                                <span className="italic truncate max-w-[300px]" title={event.justification || ""}>
-                                  {event.justification}
-                                </span>
-                              </div>
                             )}
                           </div>
                           {event.description && (
@@ -706,32 +533,7 @@ export default function Agenda() {
         )}
       </div>
 
-      <Dialog open={isJustifyOpen} onOpenChange={setIsJustifyOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Motivo da não conclusão</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Por que este evento não foi realizado?</Label>
-              <Textarea
-                placeholder="Ex: Chuva intensa, Cliente remarcou, Falta de material..."
-                value={justificationText}
-                onChange={(e) => setJustificationText(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsJustifyOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleSaveJustification}>
-              Confirmar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* Modais */}
       <EventDetailModal
         event={selectedEvent}
         open={isDetailOpen}
@@ -740,6 +542,7 @@ export default function Agenda() {
         onDelete={handleDeleteEvent}
         onUpdate={() => {
           fetchEvents();
+          // Atualiza o selectedEvent com dados frescos
           if (selectedEvent) {
             const updated = events.find((e) => e.id === selectedEvent.id);
             if (updated) setSelectedEvent(updated);
