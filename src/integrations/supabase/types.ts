@@ -24,6 +24,7 @@ export type Database = {
           description: string | null
           end_date: string
           id: string
+          justification: string | null
           obra_id: string
           participants: string[] | null
           resumo: string | null
@@ -39,6 +40,7 @@ export type Database = {
           description?: string | null
           end_date: string
           id?: string
+          justification?: string | null
           obra_id: string
           participants?: string[] | null
           resumo?: string | null
@@ -54,6 +56,7 @@ export type Database = {
           description?: string | null
           end_date?: string
           id?: string
+          justification?: string | null
           obra_id?: string
           participants?: string[] | null
           resumo?: string | null
