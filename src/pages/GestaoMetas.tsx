@@ -99,7 +99,6 @@ const GestaoMetas = () => {
   const [localObras, setLocalObras] = useState<ObraFinanceira[]>([]);
   const [isSavingObras, setIsSavingObras] = useState(false);
 
-
   // --- QUERY PRINCIPAL ---
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["gestaoMetas", userSession?.user?.id, anoSelecionado],
@@ -542,29 +541,35 @@ const GestaoMetas = () => {
                   <p className="text-lg font-mono font-bold text-amber-300">{formatCurrency(totalLucroPrevisto)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prev.</p>
-                  <p className={`text-lg font-mono font-bold ${margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}>
+                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prevista</p>
+                  <p
+                    className={`text-lg font-mono font-bold ${margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
+                  >
                     {margemPrevista.toFixed(2)}%
                   </p>
                 </div>
               </div>
-              
+
               <div className="border-t border-slate-800"></div>
-              
+
               {/* Lucro Consolidado */}
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Lucro Consolidado</p>
-                  <p className="text-lg font-mono font-bold text-emerald-300">{formatCurrency(totalLucroConsolidado)}</p>
+                  <p className="text-lg font-mono font-bold text-emerald-300">
+                    {formatCurrency(totalLucroConsolidado)}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Margem Cons.</p>
-                  <p className={`text-lg font-mono font-bold ${margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}>
+                  <p
+                    className={`text-lg font-mono font-bold ${margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                  >
                     {margemConsolidada.toFixed(2)}%
                   </p>
                 </div>
               </div>
-              
+
               <div className="text-[10px] text-slate-500 uppercase pt-1 border-t border-slate-800">
                 Alvo: <span className="text-slate-300 font-bold">{meta.meta_margem_liquida}%</span>
               </div>
@@ -592,13 +597,17 @@ const GestaoMetas = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-amber-400 uppercase">Margem Prev.</p>
-                      <p className={`text-sm font-mono font-bold ${topSquad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}>
+                      <p
+                        className={`text-sm font-mono font-bold ${topSquad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
+                      >
                         {topSquad.margemPrevista.toFixed(1)}%
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] text-emerald-400 uppercase">Margem Cons.</p>
-                      <p className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}>
+                      <p
+                        className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                      >
                         {topSquad.margemConsolidada.toFixed(1)}%
                       </p>
                     </div>
@@ -775,12 +784,18 @@ const GestaoMetas = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-emerald-400 uppercase mb-1">Lucro Cons.</p>
-                      <p className="font-mono text-sm text-emerald-300">{formatCurrency(obra.lucro_consolidado || 0)}</p>
+                      <p className="font-mono text-sm text-emerald-300">
+                        {formatCurrency(obra.lucro_consolidado || 0)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-500 uppercase mb-1">Margem Cons.</p>
-                      <p className={`font-mono text-sm font-bold ${obra.faturamento_realizado > 0 ? (((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100 >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500") : "text-slate-500"}`}>
-                        {obra.faturamento_realizado > 0 ? `${(((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100).toFixed(2)}%` : "N/A"}
+                      <p
+                        className={`font-mono text-sm font-bold ${obra.faturamento_realizado > 0 ? (((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100 >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500") : "text-slate-500"}`}
+                      >
+                        {obra.faturamento_realizado > 0
+                          ? `${(((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100).toFixed(2)}%`
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
