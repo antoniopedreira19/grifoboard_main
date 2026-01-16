@@ -726,6 +726,7 @@ export type Database = {
           faturamento_realizado: number | null
           id: string
           localizacao: string | null
+          lucro_consolidado: number | null
           lucro_realizado: number | null
           nome_obra: string
           nps: number | null
@@ -743,6 +744,7 @@ export type Database = {
           faturamento_realizado?: number | null
           id?: string
           localizacao?: string | null
+          lucro_consolidado?: number | null
           lucro_realizado?: number | null
           nome_obra: string
           nps?: number | null
@@ -760,6 +762,7 @@ export type Database = {
           faturamento_realizado?: number | null
           id?: string
           localizacao?: string | null
+          lucro_consolidado?: number | null
           lucro_realizado?: number | null
           nome_obra?: string
           nps?: number | null
