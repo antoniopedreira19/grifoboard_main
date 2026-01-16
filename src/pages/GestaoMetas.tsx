@@ -596,7 +596,7 @@ const GestaoMetas = () => {
                       <p className="text-sm font-mono text-slate-200">{formatCurrency(topSquad.faturamento)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-amber-400 uppercase">Margem Prevista</p>
+                      <p className="text-[10px] text-amber-400 uppercase">Margem Prev.</p>
                       <p
                         className={`text-sm font-mono font-bold ${topSquad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
                       >
@@ -604,7 +604,7 @@ const GestaoMetas = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-emerald-400 uppercase">Margem Consolidada</p>
+                      <p className="text-[10px] text-emerald-400 uppercase">Margem Cons.</p>
                       <p
                         className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
                       >
