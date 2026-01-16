@@ -705,7 +705,7 @@ const GestaoMetas = () => {
                       <span className="font-mono text-emerald-300">{formatCurrency(squad.lucroConsolidado)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-amber-400 text-xs uppercase tracking-wider">Margem Prev.</span>
+                      <span className="text-amber-400 text-xs uppercase tracking-wider">Margem Prevista</span>
                       <span
                         className={`font-mono font-bold ${squad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
                       >
@@ -713,7 +713,7 @@ const GestaoMetas = () => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Margem Cons.</span>
+                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Margem Consolidada</span>
                       <span
                         className={`font-mono font-bold ${squad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
                       >
