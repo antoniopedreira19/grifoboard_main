@@ -541,7 +541,7 @@ const GestaoMetas = () => {
                   <p className="text-lg font-mono font-bold text-amber-300">{formatCurrency(totalLucroPrevisto)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prevista</p>
+                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prev.</p>
                   <p
                     className={`text-lg font-mono font-bold ${margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
                   >
