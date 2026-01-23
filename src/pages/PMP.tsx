@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { addDays, format } from "date-fns";
 import { usePmpData } from "@/hooks/usePmpData";
@@ -46,6 +46,8 @@ const PMP = () => {
 
   // Estados do modal e filtros
   const [responsavelFilter, setResponsavelFilter] = useState<string>("todos");
+  const [weekStartFilter, setWeekStartFilter] = useState<number>(0);
+  const [weekEndFilter, setWeekEndFilter] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSetorModalOpen, setIsSetorModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,6 +60,13 @@ const PMP = () => {
     setor: "",
   });
   const [restricoesTemp, setRestricoesTemp] = useState<Restricao[]>([]);
+
+  // Inicializa o filtro de semanas quando weeks carrega
+  useEffect(() => {
+    if (weeks.length > 0 && weekEndFilter === 0) {
+      setWeekEndFilter(weeks.length - 1);
+    }
+  }, [weeks.length, weekEndFilter]);
 
   // Handlers
   const handleOpenAdd = useCallback((weekId: string) => {
@@ -214,7 +223,7 @@ const PMP = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col space-y-4 font-sans bg-slate-50/30 pb-20">
+    <div className="min-h-screen flex flex-col space-y-4 font-sans bg-muted/30 pb-20">
       {/* Header */}
       <PmpHeader
         nomeObra={obraAtiva.nome_obra}
@@ -234,6 +243,10 @@ const PMP = () => {
         responsaveis={responsaveisUnicos}
         responsavelFilter={responsavelFilter}
         onResponsavelFilterChange={setResponsavelFilter}
+        weekStartFilter={weekStartFilter}
+        weekEndFilter={weekEndFilter}
+        onWeekStartFilterChange={setWeekStartFilter}
+        onWeekEndFilterChange={setWeekEndFilter}
       />
 
       {/* Painel de Restrições */}
