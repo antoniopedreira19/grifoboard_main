@@ -49,6 +49,9 @@ const COLOR_MAP: Record<string, string> = {
   teal: "#14b8a6",
 };
 
+// Maximum activities per week card before splitting
+const MAX_ATIVIDADES_PER_CARD = 12;
+
 function generateHtmlContent(
   weeksData: WeekData[],
   obraNome: string,
@@ -56,15 +59,63 @@ function generateHtmlContent(
   const { date: currentDate, time: currentTime } = getCurrentDateTimeBR();
   const logoUrl = "https://qacaerwosglbayjfskyx.supabase.co/storage/v1/object/public/templates/LogoSemFundo.png";
 
+  // Split weeks with many activities into multiple cards
+  interface WeekCardData {
+    weekId: string;
+    label: string;
+    formattedRange: string;
+    atividades: PmpAtividade[];
+    totalAtividades: number;
+    totalConcluidas: number;
+    partNumber?: number;
+    totalParts?: number;
+  }
+
+  const expandedWeeks: WeekCardData[] = [];
+  
+  for (const week of weeksData) {
+    const totalAtividades = week.atividades.length;
+    const totalConcluidas = week.atividades.filter(a => a.concluido).length;
+    
+    if (totalAtividades <= MAX_ATIVIDADES_PER_CARD) {
+      expandedWeeks.push({
+        ...week,
+        totalAtividades,
+        totalConcluidas,
+      });
+    } else {
+      // Split into multiple cards
+      const numParts = Math.ceil(totalAtividades / MAX_ATIVIDADES_PER_CARD);
+      for (let i = 0; i < numParts; i++) {
+        const start = i * MAX_ATIVIDADES_PER_CARD;
+        const end = start + MAX_ATIVIDADES_PER_CARD;
+        expandedWeeks.push({
+          weekId: week.weekId,
+          label: week.label,
+          formattedRange: week.formattedRange,
+          atividades: week.atividades.slice(start, end),
+          totalAtividades,
+          totalConcluidas,
+          partNumber: i + 1,
+          totalParts: numParts,
+        });
+      }
+    }
+  }
+
   // Generate week cards in groups of 3
   let boardHtml = "";
   
-  for (let i = 0; i < weeksData.length; i += 3) {
-    const rowWeeks = weeksData.slice(i, i + 3);
+  for (let i = 0; i < expandedWeeks.length; i += 3) {
+    const rowWeeks = expandedWeeks.slice(i, i + 3);
     
     boardHtml += `<div class="week-row">`;
     
     for (const week of rowWeeks) {
+      const partLabel = week.totalParts && week.totalParts > 1 
+        ? ` (${week.partNumber}/${week.totalParts})` 
+        : '';
+      
       const atividadesHtml = week.atividades.length > 0 
         ? week.atividades.map(ativ => {
             const borderColor = COLOR_MAP[ativ.cor] || COLOR_MAP.yellow;
@@ -88,15 +139,15 @@ function generateHtmlContent(
       boardHtml += `
         <div class="week-card">
           <div class="week-header">
-            <span class="week-label">${week.label}</span>
+            <span class="week-label">${week.label}${partLabel}</span>
             <span class="week-range">${week.formattedRange}</span>
           </div>
           <div class="week-body">
             ${atividadesHtml}
           </div>
           <div class="week-footer">
-            <span class="count">${week.atividades.length} ${week.atividades.length === 1 ? 'atividade' : 'atividades'}</span>
-            <span class="done-count">${week.atividades.filter(a => a.concluido).length} concluídas</span>
+            <span class="count">${week.totalAtividades} ${week.totalAtividades === 1 ? 'atividade' : 'atividades'}</span>
+            <span class="done-count">${week.totalConcluidas} concluídas</span>
           </div>
         </div>
       `;
@@ -158,7 +209,6 @@ function generateHtmlContent(
     .week-row {
       display: flex;
       gap: 12px;
-      page-break-inside: avoid;
     }
 
     .week-card {
@@ -170,6 +220,7 @@ function generateHtmlContent(
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      break-inside: avoid;
     }
     
     .week-card.empty {
@@ -201,8 +252,6 @@ function generateHtmlContent(
       flex: 1;
       padding: 8px;
       min-height: 80px;
-      max-height: 150px;
-      overflow: hidden;
     }
 
     .week-footer {
