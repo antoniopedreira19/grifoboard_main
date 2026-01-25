@@ -2,3 +2,6 @@ project_id = "qacaerwosglbayjfskyx"
 
 [functions.export-pdf]
 verify_jwt = false
+
+[functions.export-pmp-pdf]
+verify_jwt = false

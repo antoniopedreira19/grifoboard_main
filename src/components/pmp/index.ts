@@ -7,3 +7,4 @@ export { PmpRestricoesPanel } from "./PmpRestricoesPanel";
 export { PmpPlantaSetores } from "./PmpPlantaSetores";
 export { PmpAtividadeModal } from "./PmpAtividadeModal";
 export { PmpSetorModal } from "./PmpSetorModal";
+export { PmpExportDialog } from "./PmpExportDialog";
