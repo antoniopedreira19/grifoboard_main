@@ -247,6 +247,8 @@ const PMP = () => {
         weekEndFilter={weekEndFilter}
         onWeekStartFilterChange={setWeekStartFilter}
         onWeekEndFilterChange={setWeekEndFilter}
+        obraId={obraAtiva.id}
+        obraNome={obraAtiva.nome_obra}
       />
 
       {/* Painel de Restrições */}

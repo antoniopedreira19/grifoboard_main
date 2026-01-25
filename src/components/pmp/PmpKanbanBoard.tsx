@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Plus, User, Filter, Calendar } from "lucide-react";
+import { Plus, User, Filter, Calendar, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
@@ -24,6 +24,7 @@ import {
 import { parseISO, addDays, differenceInCalendarDays } from "date-fns";
 import { PmpKanbanCard } from "./PmpKanbanCard";
 import { PmpKanbanColumn } from "./PmpKanbanColumn";
+import { PmpExportDialog } from "./PmpExportDialog";
 import type { PmpAtividade, PmpWeek } from "@/types/pmp";
 import { safeParseDate } from "@/utils/pmpDateUtils";
 
@@ -48,6 +49,8 @@ interface PmpKanbanBoardProps {
   weekEndFilter: number;
   onWeekStartFilterChange: (value: number) => void;
   onWeekEndFilterChange: (value: number) => void;
+  obraId?: string;
+  obraNome?: string;
 }
 
 const dropAnimation: DropAnimation = {
@@ -71,6 +74,8 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   weekEndFilter,
   onWeekStartFilterChange,
   onWeekEndFilterChange,
+  obraId,
+  obraNome,
 }: PmpKanbanBoardProps) {
   const [activeDragItem, setActiveDragItem] = useState<PmpAtividade | null>(null);
 
@@ -256,6 +261,20 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           >
             Limpar filtros
           </Button>
+        )}
+
+        {/* Separador */}
+        <div className="h-6 w-px bg-border ml-auto" />
+
+        {/* Botão de Exportar PDF */}
+        {obraId && obraNome && (
+          <PmpExportDialog
+            obraId={obraId}
+            obraNome={obraNome}
+            weeks={weeks}
+            weekStartFilter={weekStartFilter}
+            weekEndFilter={weekEndFilter}
+          />
         )}
       </div>
 
