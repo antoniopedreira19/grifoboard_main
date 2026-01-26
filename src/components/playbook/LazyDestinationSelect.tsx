@@ -1,10 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { Building2, Truck, User } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface LazyDestinationSelectProps {
@@ -20,7 +16,7 @@ const destinations = [
 ] as const;
 
 const getDestination = (value: string | null | undefined) => {
-  return destinations.find(d => d.value === value);
+  return destinations.find((d) => d.value === value);
 };
 
 // Componente memoizado e leve - só renderiza o popover quando clicado
@@ -30,11 +26,14 @@ export const LazyDestinationSelect = memo(function LazyDestinationSelect({
   disabled,
 }: LazyDestinationSelectProps) {
   const [open, setOpen] = useState(false);
-  
-  const handleSelect = useCallback((newValue: string) => {
-    onChange(newValue);
-    setOpen(false);
-  }, [onChange]);
+
+  const handleSelect = useCallback(
+    (newValue: string) => {
+      onChange(newValue);
+      setOpen(false);
+    },
+    [onChange],
+  );
 
   if (disabled) {
     return <span className="text-[10px] text-slate-300">—</span>;
@@ -51,7 +50,7 @@ export const LazyDestinationSelect = memo(function LazyDestinationSelect({
           className={cn(
             "h-5 text-[10px] px-1.5 rounded flex items-center gap-1 transition-colors",
             "hover:bg-slate-100 focus:outline-none focus:ring-1 focus:ring-primary/20",
-            value ? "text-slate-600" : "text-slate-400"
+            value ? "text-slate-600" : "text-slate-400",
           )}
         >
           {Icon && <Icon className="w-3 h-3" />}
@@ -70,7 +69,7 @@ export const LazyDestinationSelect = memo(function LazyDestinationSelect({
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors",
                   "hover:bg-slate-100",
-                  value === dest.value && "bg-primary/10 text-primary font-medium"
+                  value === dest.value && "bg-primary/10 text-primary font-medium",
                 )}
               >
                 <DestIcon className="w-3 h-3" />
