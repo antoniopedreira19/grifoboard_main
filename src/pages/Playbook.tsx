@@ -260,10 +260,10 @@ const Playbook = () => {
             <div className="flex justify-center mb-6">
               <TabsList className="bg-white border p-1 rounded-full shadow-sm">
                 <TabsTrigger value="orcamento" className="rounded-full px-6 py-2 flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" /> Orçamento
+                  <BookOpen className="h-4 w-4" /> 1. Orçamento & Metas
                 </TabsTrigger>
                 <TabsTrigger value="contratacao" className="rounded-full px-6 py-2 flex items-center gap-2">
-                  <ListChecks className="h-4 w-4" /> Contratação
+                  <ListChecks className="h-4 w-4" /> 2. Gestão de Contratações
                 </TabsTrigger>
               </TabsList>
             </div>

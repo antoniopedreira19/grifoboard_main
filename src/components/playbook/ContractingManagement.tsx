@@ -16,7 +16,7 @@ interface ContractingManagementProps {
 type DestinoType = "obra_direta" | "fornecimento" | "cliente";
 
 const DESTINOS: { key: DestinoType; label: string; icon: React.ReactNode }[] = [
-  { key: "obra_direta", label: "Obra Direta", icon: <Building2 className="h-4 w-4" /> },
+  { key: "obra_direta", label: "Obra", icon: <Building2 className="h-4 w-4" /> },
   { key: "fornecimento", label: "Fornecimento", icon: <Truck className="h-4 w-4" /> },
   { key: "cliente", label: "Cliente", icon: <User className="h-4 w-4" /> },
 ];
@@ -132,8 +132,8 @@ export function ContractingManagement({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Gestão de Contratação</h2>
-          <p className="text-muted-foreground">Acompanhe o status por destino de contratação.</p>
+          <h2 className="text-xl font-bold text-foreground">Farol de Contratações</h2>
+          <p className="text-sm text-muted-foreground">Clique em cada campo para editar.</p>
         </div>
       </div>
 
