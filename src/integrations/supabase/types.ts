@@ -24,7 +24,6 @@ export type Database = {
           description: string | null
           end_date: string
           id: string
-          justification: string | null
           obra_id: string
           participants: string[] | null
           resumo: string | null
@@ -40,7 +39,6 @@ export type Database = {
           description?: string | null
           end_date: string
           id?: string
-          justification?: string | null
           obra_id: string
           participants?: string[] | null
           resumo?: string | null
@@ -56,7 +54,6 @@ export type Database = {
           description?: string | null
           end_date?: string
           id?: string
-          justification?: string | null
           obra_id?: string
           participants?: string[] | null
           resumo?: string | null
@@ -726,7 +723,6 @@ export type Database = {
           faturamento_realizado: number | null
           id: string
           localizacao: string | null
-          lucro_consolidado: number | null
           lucro_realizado: number | null
           nome_obra: string
           nps: number | null
@@ -744,7 +740,6 @@ export type Database = {
           faturamento_realizado?: number | null
           id?: string
           localizacao?: string | null
-          lucro_consolidado?: number | null
           lucro_realizado?: number | null
           nome_obra: string
           nps?: number | null
@@ -762,7 +757,6 @@ export type Database = {
           faturamento_realizado?: number | null
           id?: string
           localizacao?: string | null
-          lucro_consolidado?: number | null
           lucro_realizado?: number | null
           nome_obra?: string
           nps?: number | null

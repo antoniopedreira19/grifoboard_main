@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { diarioService, type DiarioObra as DiarioObraRecord } from "@/services/diarioService";
@@ -53,7 +52,6 @@ import { PhotoGallery } from "@/components/diario/PhotoGallery";
 
 const DiarioObra = () => {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { userSession } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = useState<Date>(new Date());
@@ -94,28 +92,6 @@ const DiarioObra = () => {
       loadDiarioHistory();
     }
   }, [date, obraId]);
-
-  // === VERIFICAÇÃO DE OBRA SELECIONADA ===
-  // Se não houver obra selecionada, mostra a tela de seleção (igual às outras abas)
-  if (!obraId) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-lg border border-slate-100">
-          <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center">
-            <BookOpen className="h-8 w-8 text-slate-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800">Nenhuma obra selecionada</h2>
-          <p className="text-slate-600">Selecione uma obra para continuar.</p>
-          <Button
-            onClick={() => navigate("/obras")}
-            className="px-6 py-3 bg-[#C7A347] text-white rounded-xl font-semibold hover:bg-[#B7943F] transition-colors"
-          >
-            Selecionar Obra
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   // --- FUNÇÕES DE DADOS DO DIÁRIO ---
 
@@ -179,24 +155,7 @@ const DiarioObra = () => {
   };
 
   const handleSave = async () => {
-    if (!obraId) {
-      toast({
-        title: "Erro",
-        description: "Nenhuma obra selecionada.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validação: atividades é obrigatório
-    if (!formData.atividades.trim()) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Preencha as atividades realizadas antes de salvar.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!obraId) return;
 
     setIsSaving(true);
     const isNewDiario = !diarioId; // Marca se é novo ANTES de salvar
@@ -215,7 +174,7 @@ const DiarioObra = () => {
         clima: climaJson,
         mao_de_obra: formData.mao_de_obra,
         equipamentos: formData.equipamentos,
-        atividades: formData.atividades.trim(),
+        atividades: formData.atividades,
         ocorrencias: formData.ocorrencias,
         observacoes: formData.observacoes,
       });

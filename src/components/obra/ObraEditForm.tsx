@@ -37,7 +37,7 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
       setDataInicio(obra.data_inicio ? obra.data_inicio.split('T')[0] : '');
       setDataTermino(obra.data_termino ? obra.data_termino.split('T')[0] : '');
       setStatus(obra.status || 'em_andamento');
-      setResponsavel(obra.usuario_id || '');
+      setResponsavel(obra.created_by || '');
     }
   }, [obra]);
 
@@ -61,21 +61,14 @@ const ObraEditForm = ({ isOpen, onClose, onObraAtualizada, obra }: ObraEditFormP
     setIsSubmitting(true);
     
     try {
-      // Monta objeto de atualização - usuario_id é atualizado se responsavel foi selecionado
       const obraAtualizada: Partial<Obra> = {
         nome_obra: nomeObra,
         localizacao,
         data_inicio: dataInicio,
-        data_termino: dataTermino || null,
+        data_termino: dataTermino || undefined,
         status,
+        created_by: responsavel || obra.created_by,
       };
-      
-      // Sempre inclui usuario_id se responsavel estiver definido (mesmo que seja diferente do atual)
-      if (responsavel) {
-        obraAtualizada.usuario_id = responsavel;
-      }
-      
-      console.log("Atualizando obra:", obra.id, "com dados:", obraAtualizada);
       
       await obrasService.atualizarObra(obra.id, obraAtualizada);
       
