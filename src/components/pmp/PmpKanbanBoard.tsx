@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Plus, User, Filter, Calendar, FileDown } from "lucide-react";
+import { Plus, User, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
@@ -24,7 +24,6 @@ import {
 import { parseISO, addDays, differenceInCalendarDays } from "date-fns";
 import { PmpKanbanCard } from "./PmpKanbanCard";
 import { PmpKanbanColumn } from "./PmpKanbanColumn";
-import { PmpExportDialog } from "./PmpExportDialog";
 import type { PmpAtividade, PmpWeek } from "@/types/pmp";
 import { safeParseDate } from "@/utils/pmpDateUtils";
 
@@ -45,12 +44,6 @@ interface PmpKanbanBoardProps {
   responsaveis: string[];
   responsavelFilter: string;
   onResponsavelFilterChange: (value: string) => void;
-  weekStartFilter: number;
-  weekEndFilter: number;
-  onWeekStartFilterChange: (value: number) => void;
-  onWeekEndFilterChange: (value: number) => void;
-  obraId?: string;
-  obraNome?: string;
 }
 
 const dropAnimation: DropAnimation = {
@@ -70,12 +63,6 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   responsaveis,
   responsavelFilter,
   onResponsavelFilterChange,
-  weekStartFilter,
-  weekEndFilter,
-  onWeekStartFilterChange,
-  onWeekEndFilterChange,
-  obraId,
-  obraNome,
 }: PmpKanbanBoardProps) {
   const [activeDragItem, setActiveDragItem] = useState<PmpAtividade | null>(null);
 
@@ -170,29 +157,17 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
     [getTasksForWeek, onMove]
   );
 
-  // Weeks filtradas baseadas nos filtros de intervalo
-  const filteredWeeks = weeks.slice(weekStartFilter, weekEndFilter + 1);
-
-  // Labels para os seletores de semana
-  const getWeekLabel = (index: number) => {
-    const week = weeks[index];
-    if (!week) return `Semana ${index + 1}`;
-    return `Semana ${String(index + 1).padStart(2, '0')} (${week.formattedRange})`;
-  };
-
   return (
-    <div className="w-full border border-border rounded-xl bg-card shadow-sm flex-shrink-0 overflow-hidden flex flex-col h-[600px]">
+    <div className="w-full border border-slate-200 rounded-xl bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col h-[600px]">
       {/* Barra de filtros */}
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
           <Filter className="h-4 w-4" />
           <span className="font-medium">Filtrar:</span>
         </div>
-        
-        {/* Filtro de Responsável */}
         <Select value={responsavelFilter} onValueChange={onResponsavelFilterChange}>
-          <SelectTrigger className="w-[180px] h-8 text-sm">
-            <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+          <SelectTrigger className="w-[200px] h-8 text-sm">
+            <User className="h-3.5 w-3.5 mr-2 text-slate-500" />
             <SelectValue placeholder="Responsável" />
           </SelectTrigger>
           <SelectContent>
@@ -204,77 +179,15 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
             ))}
           </SelectContent>
         </Select>
-
-        {/* Separador */}
-        <div className="h-6 w-px bg-border" />
-
-        {/* Filtro de Semanas */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          <span className="font-medium">Semanas:</span>
-        </div>
-        
-        <Select 
-          value={String(weekStartFilter)} 
-          onValueChange={(val) => onWeekStartFilterChange(Number(val))}
-        >
-          <SelectTrigger className="w-[220px] h-8 text-sm">
-            <SelectValue placeholder="Início" />
-          </SelectTrigger>
-          <SelectContent>
-            {weeks.map((_, idx) => (
-              <SelectItem key={idx} value={String(idx)} disabled={idx > weekEndFilter}>
-                {getWeekLabel(idx)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <span className="text-muted-foreground text-sm">até</span>
-
-        <Select 
-          value={String(weekEndFilter)} 
-          onValueChange={(val) => onWeekEndFilterChange(Number(val))}
-        >
-          <SelectTrigger className="w-[220px] h-8 text-sm">
-            <SelectValue placeholder="Fim" />
-          </SelectTrigger>
-          <SelectContent>
-            {weeks.map((_, idx) => (
-              <SelectItem key={idx} value={String(idx)} disabled={idx < weekStartFilter}>
-                {getWeekLabel(idx)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {(responsavelFilter !== "todos" || weekStartFilter !== 0 || weekEndFilter !== weeks.length - 1) && (
+        {responsavelFilter !== "todos" && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              onResponsavelFilterChange("todos");
-              onWeekStartFilterChange(0);
-              onWeekEndFilterChange(weeks.length - 1);
-            }}
+            className="h-8 text-xs text-slate-500 hover:text-slate-700"
+            onClick={() => onResponsavelFilterChange("todos")}
           >
-            Limpar filtros
+            Limpar filtro
           </Button>
-        )}
-
-        {/* Separador */}
-        <div className="h-6 w-px bg-border ml-auto" />
-
-        {/* Botão de Exportar PDF */}
-        {obraId && obraNome && (
-          <PmpExportDialog
-            obraId={obraId}
-            obraNome={obraNome}
-            weeks={weeks}
-            weekStartFilter={weekStartFilter}
-            weekEndFilter={weekEndFilter}
-          />
         )}
       </div>
 
@@ -285,27 +198,27 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-hidden flex flex-col bg-muted/30">
+        <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/30">
           {/* Wrapper com scroll horizontal */}
           <ScrollArea className="flex-1 w-full">
             <div className="min-w-max">
               {/* Headers fixos das semanas */}
-              <div className="flex p-4 pb-2 gap-4 sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border">
-                {filteredWeeks.map((week, idx) => (
+              <div className="flex p-4 pb-2 gap-4 sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm border-b border-slate-100">
+                {weeks.map((week) => (
                   <div
                     key={`header-${week.id}`}
                     className="flex-shrink-0 w-[280px]"
                   >
-                    <div className="bg-card border border-border rounded-lg p-3 shadow-sm">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-foreground text-sm uppercase">
+                        <span className="font-semibold text-slate-800 text-sm uppercase">
                           {week.label}
                         </span>
-                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                        <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">
                           {week.year}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground font-medium capitalize">
+                      <div className="text-xs text-slate-500 font-medium capitalize">
                         {week.formattedRange}
                       </div>
                     </div>
@@ -315,7 +228,7 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
 
               {/* Corpo das colunas com cards */}
               <div className="flex px-4 pb-4 pt-2 gap-4">
-                {filteredWeeks.map((week) => {
+                {weeks.map((week) => {
                   const weekTasks = getTasksForWeek(week.id);
                   return (
                     <div
@@ -323,7 +236,7 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
                       className="flex-shrink-0 w-[280px] flex flex-col"
                     >
                       {/* Corpo da Coluna */}
-                      <div className="bg-muted/50 rounded-lg border border-dashed border-border flex flex-col min-h-[380px] relative">
+                      <div className="bg-slate-100/50 rounded-lg border border-dashed border-slate-200 flex flex-col min-h-[380px] relative">
                         <div className="p-2 pb-14 space-y-2">
                           <PmpKanbanColumn weekId={week.id} tasks={weekTasks}>
                             {weekTasks.map((atividade) => (
@@ -340,10 +253,10 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
                         </div>
 
                         {/* Botão Adicionar */}
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-muted via-muted to-transparent pt-4">
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-100 via-slate-100 to-transparent pt-4">
                           <Button
                             variant="ghost"
-                            className="w-full bg-card hover:bg-card/80 shadow-sm border border-border text-muted-foreground text-xs h-8"
+                            className="w-full bg-white hover:bg-white/80 shadow-sm border border-slate-200 text-slate-600 text-xs h-8"
                             onClick={() => onOpenAdd(week.id)}
                           >
                             <Plus className="h-3 w-3 mr-1" /> Adicionar
