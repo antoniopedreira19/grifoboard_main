@@ -86,26 +86,26 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
       "Verbas",
       "Preço total",
     ];
-    
+
     // Exemplo de dados para orientar o preenchimento
     const exampleData = [
       ["01", "ETAPA PRINCIPAL EXEMPLO", "", "", "", "", "", "", ""],
       ["01.001", "Sub-etapa exemplo", "", "", "", "", "", "", ""],
       ["01.001.001", "Item de serviço exemplo", "m²", "100,00", "1.500,00", "800,00", "200,00", "100,00", "2.600,00"],
     ];
-    
+
     const ws = XLSX.utils.aoa_to_sheet([headers, ...exampleData]);
 
     ws["!cols"] = [
-      { wch: 15 },  // Código
-      { wch: 50 },  // Descrição
-      { wch: 10 },  // Unidade
-      { wch: 18 },  // Quantidade orçada
-      { wch: 15 },  // Mão de obra
-      { wch: 15 },  // Materiais
-      { wch: 15 },  // Equipamentos
-      { wch: 15 },  // Verbas
-      { wch: 15 },  // Preço total
+      { wch: 15 }, // Código
+      { wch: 50 }, // Descrição
+      { wch: 10 }, // Unidade
+      { wch: 18 }, // Quantidade orçada
+      { wch: 15 }, // Mão de obra
+      { wch: 15 }, // Materiais
+      { wch: 15 }, // Equipamentos
+      { wch: 15 }, // Verbas
+      { wch: 15 }, // Preço total
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Orçamento Grifo");
@@ -203,7 +203,8 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
           const totalCalculado = valorMaoDeObra + valorMateriais + valorEquipamentos + valorVerbas;
           const precoTotalCell = get(row, idx.precoTotal, 8);
-          const precoTotal = precoTotalCell !== undefined && precoTotalCell !== "" ? parseNumber(precoTotalCell) : totalCalculado;
+          const precoTotal =
+            precoTotalCell !== undefined && precoTotalCell !== "" ? parseNumber(precoTotalCell) : totalCalculado;
 
           return {
             id: index,
@@ -229,9 +230,11 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
 
         if (isHeader) {
           // Contar segmentos no código (ex: "01" = 1, "01.001" = 2, "01.001.000" = 3)
-          const segments = item.codigo.split(".").filter(s => s.length > 0).length;
-          if (segments <= 1) nivel = 0; // Código simples = PRINCIPAL
-          else if (segments === 2) nivel = 0; // "01.001" = PRINCIPAL  
+          const segments = item.codigo.split(".").filter((s) => s.length > 0).length;
+          if (segments <= 1)
+            nivel = 0; // Código simples = PRINCIPAL
+          else if (segments === 2)
+            nivel = 0; // "01.001" = PRINCIPAL
           else nivel = 1; // Mais segmentos = SUB
         } else {
           nivel = 2; // Tem quantidade = ITEM
@@ -288,16 +291,16 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     // Percorrer de trás para frente para calcular hierarquicamente
     for (let i = rawData.length - 1; i >= 0; i--) {
       const item = rawData[i];
-      
+
       if (item.nivel === 0 || item.nivel === 1) {
         // Somar todos os filhos até encontrar outro item do mesmo nível ou menor
         let soma = 0;
         for (let j = i + 1; j < rawData.length; j++) {
           const filho = rawData[j];
-          
+
           // Se encontrar item de nível igual ou menor, parar
           if (filho.nivel <= item.nivel) break;
-          
+
           // Se é filho direto (nivel imediatamente abaixo ou item final)
           if (item.nivel === 0) {
             // Principal soma SUBs (nivel 1) ou ITEMs (nivel 2) se não houver SUB
@@ -334,7 +337,7 @@ export function PlaybookImporter({ onSave }: PlaybookImporterProps) {
     const hierarchyData = rawData.map((item, idx) => {
       // Usar o total calculado para a hierarquia
       const calculatedTotal = itemTotals.get(idx) || item.precoTotal;
-      
+
       const metaMO = item.valorMaoDeObra * validCoef;
       const metaMat = item.valorMateriais * validCoef;
       const metaEquip = item.valorEquipamentos * validCoef;
