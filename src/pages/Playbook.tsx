@@ -36,6 +36,7 @@ const Playbook = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("orcamento");
+  const [isRefreshingForTab, setIsRefreshingForTab] = useState(false);
 
   const [coeficiente1, setCoeficiente1] = useState<number>(0.57);
   const [coeficiente2, setCoeficiente2] = useState<number>(0.75);
@@ -134,9 +135,18 @@ const Playbook = () => {
   // Optimistic update handler - updates local state immediately
   const handleOptimisticUpdate = useCallback((itemId: string, field: string, value: string) => {
     setRawItems(prev => prev.map(item => 
-      item.id === itemId ? { ...item, [field]: value } : item
+      item.id === itemId ? { ...item, [field]: value || null } : item
     ));
   }, []);
+
+  // Refresh data when switching to Contratação tab
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    if (tab === "contratacao" && obraId) {
+      setIsRefreshingForTab(true);
+      fetchPlaybook(true).finally(() => setIsRefreshingForTab(false));
+    }
+  }, [obraId, fetchPlaybook]);
 
   const saveCoeficienteConfig = useCallback(async () => {
     if (!obraId) return;
@@ -246,14 +256,14 @@ const Playbook = () => {
         </Card>
       ) : (
         <div className="space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="flex justify-center mb-6">
               <TabsList className="bg-white border p-1 rounded-full shadow-sm">
                 <TabsTrigger value="orcamento" className="rounded-full px-6 py-2 flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" /> Orçamento
+                  <BookOpen className="h-4 w-4" /> 1. Orçamento & Metas
                 </TabsTrigger>
                 <TabsTrigger value="contratacao" className="rounded-full px-6 py-2 flex items-center gap-2">
-                  <ListChecks className="h-4 w-4" /> Contratação
+                  <ListChecks className="h-4 w-4" /> 2. Gestão de Contratações
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -325,7 +335,18 @@ const Playbook = () => {
             </TabsContent>
 
             <TabsContent value="contratacao">
-              <ContractingManagement />
+              {isRefreshingForTab ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <ContractingManagement
+                  data={rawItems}
+                  grandTotalOriginal={processedData.grandTotalOriginal}
+                  grandTotalMeta={processedData.grandTotalMeta}
+                  onUpdate={silentRefetch}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </div>

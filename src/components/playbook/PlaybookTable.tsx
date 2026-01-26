@@ -26,6 +26,7 @@ interface PlaybookTableProps {
   onUpdate: () => void;
   onEdit?: (item: PlaybookItem) => void;
   readOnly?: boolean;
+  mode?: "budget" | "contracting"; // Nova prop para controlar as colunas
 }
 
 // Componente auxiliar para o seletor de destino compacto
@@ -73,7 +74,7 @@ const DestinationSelect = ({
       <SelectTrigger
         className={cn(
           "h-5 text-[10px] px-1.5 border-none shadow-none bg-transparent hover:bg-slate-100 transition-colors",
-          value ? "text-slate-600" : "text-slate-400"
+          value ? "text-slate-600" : "text-slate-400",
         )}
       >
         <span className="flex items-center gap-1">
@@ -109,6 +110,7 @@ export function PlaybookTable({
   onUpdate,
   onEdit,
   readOnly = false,
+  mode = "budget",
 }: PlaybookTableProps) {
   const { toast } = useToast();
 
@@ -164,6 +166,7 @@ export function PlaybookTable({
               <TableHead className="w-[50px] text-center text-xs font-bold text-slate-700">Qtd.</TableHead>
               <TableHead className="w-[60px] text-center text-xs font-bold text-slate-700">%</TableHead>
 
+              {/* Colunas de Destino - Visíveis em ambos os modos, mas essenciais para contratação */}
               <TableHead className="w-[130px] text-right text-xs font-bold text-blue-700 bg-blue-50/50">
                 Mão de Obra
               </TableHead>
@@ -177,12 +180,24 @@ export function PlaybookTable({
                 Verbas
               </TableHead>
 
-              <TableHead className="w-[110px] text-right text-xs font-bold text-slate-900 bg-slate-100">
-                Total Orig.
-              </TableHead>
+              {/* Colunas Financeiras - Variam conforme o Modo */}
+              {mode === "budget" && (
+                <TableHead className="w-[110px] text-right text-xs font-bold text-slate-900 bg-slate-100">
+                  Total Orig.
+                </TableHead>
+              )}
+
               <TableHead className="w-[110px] text-right text-xs font-bold text-[#A47528] bg-[#A47528]/10">
-                Total Meta
+                {mode === "contracting" ? "Meta (Alvo)" : "Total Meta"}
               </TableHead>
+
+              {/* Coluna extra para Contratação */}
+              {mode === "contracting" && (
+                <TableHead className="w-[110px] text-right text-xs font-bold text-blue-700 bg-blue-50">
+                  Contratado
+                </TableHead>
+              )}
+
               {!readOnly && <TableHead className="w-[70px] text-center text-xs font-bold">Ações</TableHead>}
             </TableRow>
           </TableHeader>
@@ -227,111 +242,127 @@ export function PlaybookTable({
                         {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
                         {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
                       </span>
-                      <span className="break-words whitespace-normal leading-tight" title={item.descricao || item.etapa}>
+                      <span
+                        className="break-words whitespace-normal leading-tight"
+                        title={item.descricao || item.etapa}
+                      >
                         {item.descricao || item.etapa}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center text-xs text-slate-500 py-2">{item.unidade}</TableCell>
                   <TableCell className="text-center text-xs text-slate-500 py-2">{item.qtd}</TableCell>
-                  
+
                   {/* Coluna de % */}
                   <TableCell className="text-center py-2">
                     <span
                       className={cn(
                         "text-xs font-medium px-1.5 py-0.5 rounded",
-                        isHighPercentage
-                          ? "bg-amber-100 text-amber-800 font-bold"
-                          : "text-slate-500"
+                        isHighPercentage ? "bg-amber-100 text-amber-800 font-bold" : "text-slate-500",
                       )}
                     >
                       {percentage.toFixed(1)}%
                     </span>
                   </TableCell>
 
-                  {/* Mão de Obra */}
+                  {/* Destinos (Mantidos para referência) */}
                   <TableCell className="text-right py-2 bg-blue-50/20">
                     <div className="flex flex-col items-end">
-                      <span className="text-xs font-medium text-slate-700">
-                        {formatCurrency(item.valor_mao_de_obra)}
-                      </span>
                       {item.nivel === 2 && (
-                        <span className="text-[10px] text-blue-600">
-                          {formatCurrency(getMetaValue(item.valor_mao_de_obra, item))}
-                        </span>
-                      )}
-                      {item.nivel === 2 && item.valor_mao_de_obra > 0 && (
-                        <DestinationSelect
-                          value={item.destino_mao_de_obra}
-                          onChange={(v) => handleDestinationChange(item.id, "destino_mao_de_obra", v)}
-                        />
+                        <>
+                          <span className="text-xs font-medium text-slate-700">
+                            {formatCurrency(item.valor_mao_de_obra)}
+                          </span>
+                          {item.valor_mao_de_obra > 0 && (
+                            <DestinationSelect
+                              value={item.destino_mao_de_obra}
+                              onChange={(v) => handleDestinationChange(item.id, "destino_mao_de_obra", v)}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
 
-                  {/* Materiais */}
                   <TableCell className="text-right py-2 bg-orange-50/20">
                     <div className="flex flex-col items-end">
-                      <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_materiais)}</span>
                       {item.nivel === 2 && (
-                        <span className="text-[10px] text-orange-600">
-                          {formatCurrency(getMetaValue(item.valor_materiais, item))}
-                        </span>
-                      )}
-                      {item.nivel === 2 && item.valor_materiais > 0 && (
-                        <DestinationSelect
-                          value={item.destino_materiais}
-                          onChange={(v) => handleDestinationChange(item.id, "destino_materiais", v)}
-                        />
+                        <>
+                          <span className="text-xs font-medium text-slate-700">
+                            {formatCurrency(item.valor_materiais)}
+                          </span>
+                          {item.valor_materiais > 0 && (
+                            <DestinationSelect
+                              value={item.destino_materiais}
+                              onChange={(v) => handleDestinationChange(item.id, "destino_materiais", v)}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
 
-                  {/* Equipamentos */}
                   <TableCell className="text-right py-2 bg-yellow-50/20">
                     <div className="flex flex-col items-end">
-                      <span className="text-xs font-medium text-slate-700">
-                        {formatCurrency(item.valor_equipamentos)}
-                      </span>
                       {item.nivel === 2 && (
-                        <span className="text-[10px] text-yellow-600">
-                          {formatCurrency(getMetaValue(item.valor_equipamentos, item))}
-                        </span>
-                      )}
-                      {item.nivel === 2 && item.valor_equipamentos > 0 && (
-                        <DestinationSelect
-                          value={item.destino_equipamentos}
-                          onChange={(v) => handleDestinationChange(item.id, "destino_equipamentos", v)}
-                        />
+                        <>
+                          <span className="text-xs font-medium text-slate-700">
+                            {formatCurrency(item.valor_equipamentos)}
+                          </span>
+                          {item.valor_equipamentos > 0 && (
+                            <DestinationSelect
+                              value={item.destino_equipamentos}
+                              onChange={(v) => handleDestinationChange(item.id, "destino_equipamentos", v)}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
 
-                  {/* Verbas */}
                   <TableCell className="text-right py-2 bg-emerald-50/20">
                     <div className="flex flex-col items-end">
-                      <span className="text-xs font-medium text-slate-700">{formatCurrency(item.valor_verbas)}</span>
                       {item.nivel === 2 && (
-                        <span className="text-[10px] text-emerald-600">
-                          {formatCurrency(getMetaValue(item.valor_verbas, item))}
-                        </span>
-                      )}
-                      {item.nivel === 2 && item.valor_verbas > 0 && (
-                        <DestinationSelect
-                          value={item.destino_verbas}
-                          onChange={(v) => handleDestinationChange(item.id, "destino_verbas", v)}
-                        />
+                        <>
+                          <span className="text-xs font-medium text-slate-700">
+                            {formatCurrency(item.valor_verbas)}
+                          </span>
+                          {item.valor_verbas > 0 && (
+                            <DestinationSelect
+                              value={item.destino_verbas}
+                              onChange={(v) => handleDestinationChange(item.id, "destino_verbas", v)}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
 
-                  {/* Totais */}
-                  <TableCell className="text-right py-2 font-medium text-xs bg-slate-50">
-                    {formatCurrency(item.precoTotal || item.preco_total)}
-                  </TableCell>
+                  {/* Totais - Condicionais por modo */}
+                  {mode === "budget" && (
+                    <TableCell className="text-right py-2 font-medium text-xs bg-slate-50">
+                      {formatCurrency(item.precoTotal || item.preco_total)}
+                    </TableCell>
+                  )}
+
                   <TableCell className="text-right py-2 font-bold text-xs text-[#A47528] bg-[#A47528]/5">
                     {formatCurrency(item.precoTotalMeta)}
                   </TableCell>
+
+                  {mode === "contracting" && (
+                    <TableCell className="text-right py-2 font-bold text-xs text-blue-700 bg-blue-50">
+                      {item.nivel === 2 ? (
+                        item.valor_contratado ? (
+                          formatCurrency(item.valor_contratado)
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )
+                      ) : (
+                        // Para níveis superiores, idealmente somaria os filhos, mas aqui deixamos em branco ou implementamos soma no processamento
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </TableCell>
+                  )}
 
                   {!readOnly && (
                     <TableCell className="text-center py-2">
@@ -350,9 +381,7 @@ export function PlaybookTable({
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Excluir item?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o item do orçamento.
-                              </AlertDialogDescription>
+                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>

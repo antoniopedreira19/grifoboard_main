@@ -59,7 +59,8 @@ interface ObraFinanceira {
   id: any;
   nome_obra: string;
   faturamento_realizado: number;
-  lucro_realizado: number;
+  lucro_realizado: number; // Lucro Previsto
+  lucro_consolidado: number; // Lucro Consolidado
   considerar_na_meta: boolean;
   usuario_id: string | null;
   nps: number | null;
@@ -97,7 +98,6 @@ const GestaoMetas = () => {
 
   const [localObras, setLocalObras] = useState<ObraFinanceira[]>([]);
   const [isSavingObras, setIsSavingObras] = useState(false);
-
 
   // --- QUERY PRINCIPAL ---
   const { data: dashboardData, isLoading } = useQuery({
@@ -142,7 +142,7 @@ const GestaoMetas = () => {
       const { data: obrasData } = await supabase
         .from("obras" as any)
         .select(
-          "id, nome_obra, faturamento_realizado, lucro_realizado, considerar_na_meta, usuario_id, nps, data_inicio, data_termino, status",
+          "id, nome_obra, faturamento_realizado, lucro_realizado, lucro_consolidado, considerar_na_meta, usuario_id, nps, data_inicio, data_termino, status",
         )
         .eq("empresa_id", userData.empresa_id)
         .gte("data_termino", dataInicioAno)
@@ -221,6 +221,7 @@ const GestaoMetas = () => {
         const hasChanged =
           localObra.faturamento_realizado !== original.faturamento_realizado ||
           localObra.lucro_realizado !== original.lucro_realizado ||
+          localObra.lucro_consolidado !== original.lucro_consolidado ||
           localObra.considerar_na_meta !== original.considerar_na_meta ||
           localObra.usuario_id !== original.usuario_id ||
           localObra.nps !== original.nps ||
@@ -233,6 +234,7 @@ const GestaoMetas = () => {
               .update({
                 faturamento_realizado: localObra.faturamento_realizado,
                 lucro_realizado: localObra.lucro_realizado,
+                lucro_consolidado: localObra.lucro_consolidado,
                 considerar_na_meta: localObra.considerar_na_meta,
                 usuario_id: localObra.usuario_id,
                 nps: localObra.nps,
@@ -294,8 +296,10 @@ const GestaoMetas = () => {
 
   const obrasConsideradas = obras.filter((o) => o.considerar_na_meta);
   const totalFaturamento = obrasConsideradas.reduce((acc, curr) => acc + (curr.faturamento_realizado || 0), 0);
-  const totalLucro = obrasConsideradas.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
-  const margemAtual = totalFaturamento > 0 ? (totalLucro / totalFaturamento) * 100 : 0;
+  const totalLucroPrevisto = obrasConsideradas.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
+  const totalLucroConsolidado = obrasConsideradas.reduce((acc, curr) => acc + (curr.lucro_consolidado || 0), 0);
+  const margemPrevista = totalFaturamento > 0 ? (totalLucroPrevisto / totalFaturamento) * 100 : 0;
+  const margemConsolidada = totalFaturamento > 0 ? (totalLucroConsolidado / totalFaturamento) * 100 : 0;
   const percentualMeta = meta.meta_faturamento > 0 ? (totalFaturamento / meta.meta_faturamento) * 100 : 0;
 
   const obrasComNps = obrasConsideradas.filter((o) => o.nps !== null && o.nps !== undefined);
@@ -307,29 +311,27 @@ const GestaoMetas = () => {
     .map((squad) => {
       const obrasDoSquad = obrasConsideradas.filter((o) => o.usuario_id === squad.id);
       const fat = obrasDoSquad.reduce((acc, curr) => acc + (curr.faturamento_realizado || 0), 0);
-      const luc = obrasDoSquad.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
+      const lucPrev = obrasDoSquad.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
+      const lucCons = obrasDoSquad.reduce((acc, curr) => acc + (curr.lucro_consolidado || 0), 0);
       const squadObrasComNps = obrasDoSquad.filter((o) => o.nps !== null);
       const npsMedio =
         squadObrasComNps.length > 0
           ? squadObrasComNps.reduce((acc, curr) => acc + (curr.nps || 0), 0) / squadObrasComNps.length
           : null;
 
-      // Pega dados do GrifoWay (Geral/Empresa)
-      const rankingInfo = rankings?.find((r) => r.user_id === squad.id);
-
       return {
         ...squad,
         faturamento: fat,
-        lucro: luc,
-        margem: fat > 0 ? (luc / fat) * 100 : 0,
+        lucroPrevisto: lucPrev,
+        lucroConsolidado: lucCons,
+        margemPrevista: fat > 0 ? (lucPrev / fat) * 100 : 0,
+        margemConsolidada: fat > 0 ? (lucCons / fat) * 100 : 0,
         contrib: meta.meta_faturamento > 0 ? (fat / meta.meta_faturamento) * 100 : 0,
         qtd_obras: obrasDoSquad.length,
         nps_medio: npsMedio,
-        ranking_geral: rankingInfo?.posicao_geral ?? null,
-        ranking_empresa: rankingInfo?.posicao_empresa ?? null,
       };
     })
-    .filter((r) => r.qtd_obras > 0) // Filtra quem não tem obras no ano
+    .filter((r) => r.qtd_obras > 0)
     .sort((a, b) => b.faturamento - a.faturamento);
 
   const topSquad = rankingSquads.length > 0 ? rankingSquads[0] : null;
@@ -338,7 +340,8 @@ const GestaoMetas = () => {
   const obrasSemSquad = obrasConsideradas.filter((o) => !o.usuario_id);
   if (obrasSemSquad.length > 0) {
     const fat = obrasSemSquad.reduce((acc, curr) => acc + (curr.faturamento_realizado || 0), 0);
-    const luc = obrasSemSquad.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
+    const lucPrev = obrasSemSquad.reduce((acc, curr) => acc + (curr.lucro_realizado || 0), 0);
+    const lucCons = obrasSemSquad.reduce((acc, curr) => acc + (curr.lucro_consolidado || 0), 0);
     const squadObrasComNps = obrasSemSquad.filter((o) => o.nps !== null);
     const npsMedio =
       squadObrasComNps.length > 0
@@ -349,13 +352,13 @@ const GestaoMetas = () => {
       id: "sem-squad",
       nome: "Unidade Não Atribuída",
       faturamento: fat,
-      lucro: luc,
-      margem: fat > 0 ? (luc / fat) * 100 : 0,
+      lucroPrevisto: lucPrev,
+      lucroConsolidado: lucCons,
+      margemPrevista: fat > 0 ? (lucPrev / fat) * 100 : 0,
+      margemConsolidada: fat > 0 ? (lucCons / fat) * 100 : 0,
       contrib: meta.meta_faturamento > 0 ? (fat / meta.meta_faturamento) * 100 : 0,
       qtd_obras: obrasSemSquad.length,
       nps_medio: npsMedio,
-      ranking_geral: null,
-      ranking_empresa: null,
     } as any);
   }
 
@@ -519,27 +522,56 @@ const GestaoMetas = () => {
             </CardContent>
           </Card>
 
-          {/* KPI 2: Margem */}
-          <Card className="bg-slate-900 border-slate-800 shadow-xl relative overflow-hidden group">
+          {/* KPI 2: Lucros e Margens */}
+          <Card className="bg-slate-900 border-slate-800 shadow-xl relative overflow-hidden group col-span-1 md:col-span-2 lg:col-span-1">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
               <Activity className="h-32 w-32 text-emerald-500" />
             </div>
-            <div
-              className={`absolute left-0 top-0 bottom-0 w-1 ${margemAtual >= meta.meta_margem_liquida ? "bg-emerald-500" : "bg-red-500"}`}
-            ></div>
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-500 to-emerald-500"></div>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
-                Margem Líquida
+                Lucro & Margem
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div
-                className={`text-3xl font-mono font-bold mb-2 ${margemAtual >= meta.meta_margem_liquida ? "text-emerald-400" : "text-red-400"}`}
-              >
-                {margemAtual.toFixed(2)}%
+            <CardContent className="space-y-3">
+              {/* Lucro Previsto */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Lucro Previsto</p>
+                  <p className="text-lg font-mono font-bold text-amber-300">{formatCurrency(totalLucroPrevisto)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prev.</p>
+                  <p
+                    className={`text-lg font-mono font-bold ${margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
+                  >
+                    {margemPrevista.toFixed(2)}%
+                  </p>
+                </div>
               </div>
-              <div className="text-xs text-slate-500 uppercase">
-                Alvo Estratégico: <span className="font-bold text-slate-300">{meta.meta_margem_liquida}%</span>
+
+              <div className="border-t border-slate-800"></div>
+
+              {/* Lucro Consolidado */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Lucro Consolidado</p>
+                  <p className="text-lg font-mono font-bold text-emerald-300">
+                    {formatCurrency(totalLucroConsolidado)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Margem Cons.</p>
+                  <p
+                    className={`text-lg font-mono font-bold ${margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                  >
+                    {margemConsolidada.toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-500 uppercase pt-1 border-t border-slate-800">
+                Alvo: <span className="text-slate-300 font-bold">{meta.meta_margem_liquida}%</span>
               </div>
             </CardContent>
           </Card>
@@ -554,24 +586,30 @@ const GestaoMetas = () => {
             </CardHeader>
             <CardContent className="relative z-10">
               {topSquad ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-2xl font-bold text-white truncate border-b border-slate-700/50 pb-2 mb-2">
-                      {topSquad.nome}
+                <div className="space-y-3">
+                  <div className="text-xl font-bold text-white truncate border-b border-slate-700/50 pb-2">
+                    {topSquad.nome}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">Faturamento</p>
+                      <p className="text-sm font-mono text-slate-200">{formatCurrency(topSquad.faturamento)}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[10px] text-slate-500 uppercase">Faturamento</p>
-                        <p className="text-sm font-mono text-slate-200">{formatCurrency(topSquad.faturamento)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-500 uppercase">Margem</p>
-                        <p
-                          className={`text-sm font-mono font-bold ${topSquad.margem >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-400"}`}
-                        >
-                          {topSquad.margem.toFixed(1)}%
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-[10px] text-amber-400 uppercase">Margem Prev.</p>
+                      <p
+                        className={`text-sm font-mono font-bold ${topSquad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
+                      >
+                        {topSquad.margemPrevista.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-emerald-400 uppercase">Margem Cons.</p>
+                      <p
+                        className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                      >
+                        {topSquad.margemConsolidada.toFixed(1)}%
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -641,26 +679,6 @@ const GestaoMetas = () => {
                     </div>
                   </div>
 
-                  {/* GRIFO WAY RANKING CHIPS (INTEGRADO AQUI) */}
-                  <div className="absolute top-10 right-3 flex flex-col items-end gap-1 opacity-90">
-                    {squad.ranking_empresa && (
-                      <Badge
-                        variant="secondary"
-                        className="text-[9px] bg-blue-900/40 border-blue-500/30 text-blue-300 gap-1 h-5 hover:bg-blue-900/60"
-                      >
-                        <Trophy className="h-3 w-3" /> #{squad.ranking_empresa} Corp
-                      </Badge>
-                    )}
-                    {squad.ranking_geral && (
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] bg-amber-900/20 border-[#C7A347]/30 text-[#C7A347] gap-1 h-5 hover:bg-amber-900/40"
-                      >
-                        <Medal className="h-3 w-3" /> #{squad.ranking_geral} Geral
-                      </Badge>
-                    )}
-                  </div>
-
                   <div className="mb-6 pr-14">
                     <h3 className="font-bold text-white text-lg truncate mb-1">{squad.nome}</h3>
                     <div className="flex items-center gap-2">
@@ -679,15 +697,27 @@ const GestaoMetas = () => {
                       <span className="font-mono text-slate-200">{formatCurrency(squad.faturamento)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 text-xs uppercase tracking-wider">Lucro</span>
-                      <span className="font-mono text-emerald-400">{formatCurrency(squad.lucro)}</span>
+                      <span className="text-amber-400 text-xs uppercase tracking-wider">Lucro Previsto</span>
+                      <span className="font-mono text-amber-300">{formatCurrency(squad.lucroPrevisto)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 text-xs uppercase tracking-wider">Margem</span>
+                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Lucro Consolidado</span>
+                      <span className="font-mono text-emerald-300">{formatCurrency(squad.lucroConsolidado)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-amber-400 text-xs uppercase tracking-wider">Margem Prevista</span>
                       <span
-                        className={`font-mono font-bold ${squad.margem >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500"}`}
+                        className={`font-mono font-bold ${squad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
                       >
-                        {squad.margem.toFixed(2)}%
+                        {squad.margemPrevista.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Margem Consolidada</span>
+                      <span
+                        className={`font-mono font-bold ${squad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                      >
+                        {squad.margemConsolidada.toFixed(2)}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
@@ -743,19 +773,29 @@ const GestaoMetas = () => {
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-800/50">
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800/50">
                     <div>
                       <p className="text-[10px] text-slate-500 uppercase mb-1">Faturamento</p>
                       <p className="font-mono text-sm text-slate-300">{formatCurrency(obra.faturamento_realizado)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 uppercase mb-1">Lucro</p>
-                      <p className="font-mono text-sm text-emerald-400">{formatCurrency(obra.lucro_realizado)}</p>
+                      <p className="text-[10px] text-amber-400 uppercase mb-1">Lucro Prev.</p>
+                      <p className="font-mono text-sm text-amber-300">{formatCurrency(obra.lucro_realizado)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 uppercase mb-1">Margem</p>
-                      <p className={`font-mono text-sm font-bold ${obra.faturamento_realizado > 0 ? ((obra.lucro_realizado / obra.faturamento_realizado) * 100 >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500") : "text-slate-500"}`}>
-                        {obra.faturamento_realizado > 0 ? `${((obra.lucro_realizado / obra.faturamento_realizado) * 100).toFixed(2)}%` : "N/A"}
+                      <p className="text-[10px] text-emerald-400 uppercase mb-1">Lucro Cons.</p>
+                      <p className="font-mono text-sm text-emerald-300">
+                        {formatCurrency(obra.lucro_consolidado || 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase mb-1">Margem Cons.</p>
+                      <p
+                        className={`font-mono text-sm font-bold ${obra.faturamento_realizado > 0 ? (((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100 >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500") : "text-slate-500"}`}
+                      >
+                        {obra.faturamento_realizado > 0
+                          ? `${(((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100).toFixed(2)}%`
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -801,7 +841,8 @@ const GestaoMetas = () => {
                       <TableHead className="w-[130px] text-slate-400">Início (Ano)</TableHead>
                       <TableHead className="min-w-[150px] text-slate-400">Squad Responsável</TableHead>
                       <TableHead className="w-[140px] text-slate-400">Faturamento</TableHead>
-                      <TableHead className="w-[140px] text-slate-400">Lucro</TableHead>
+                      <TableHead className="w-[140px] text-amber-400">Lucro Previsto</TableHead>
+                      <TableHead className="w-[140px] text-emerald-400">Lucro Consolidado</TableHead>
                       <TableHead className="w-[90px] text-slate-400">NPS</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -874,11 +915,25 @@ const GestaoMetas = () => {
                             type="number"
                             step="0.01"
                             placeholder="0,00"
-                            className="h-8 text-right bg-slate-950 border-slate-700 text-white font-mono text-xs focus:border-[#C7A347] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-right bg-slate-950 border-amber-700/50 text-amber-300 font-mono text-xs focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             value={obra.lucro_realizado === 0 ? "" : obra.lucro_realizado}
                             onChange={(e) => {
                               const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
                               handleLocalChange(obra.id, "lucro_realizado", val);
+                            }}
+                          />
+                        </TableCell>
+
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0,00"
+                            className="h-8 text-right bg-slate-950 border-emerald-700/50 text-emerald-300 font-mono text-xs focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={obra.lucro_consolidado === 0 ? "" : obra.lucro_consolidado}
+                            onChange={(e) => {
+                              const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                              handleLocalChange(obra.id, "lucro_consolidado", val);
                             }}
                           />
                         </TableCell>
