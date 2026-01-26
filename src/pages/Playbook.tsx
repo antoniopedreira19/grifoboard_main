@@ -325,7 +325,12 @@ const Playbook = () => {
             </TabsContent>
 
             <TabsContent value="contratacao">
-              <ContractingManagement />
+              <ContractingManagement
+                data={rawItems}
+                grandTotalOriginal={processedData.grandTotalOriginal}
+                grandTotalMeta={processedData.grandTotalMeta}
+                onUpdate={silentRefetch}
+              />
             </TabsContent>
           </Tabs>
         </div>
