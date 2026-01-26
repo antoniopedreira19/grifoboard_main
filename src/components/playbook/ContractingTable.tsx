@@ -48,9 +48,9 @@ export function ContractingTable({ items, destino, onUpdate }: ContractingTableP
   const handleSaveEdit = async (itemId: string) => {
     try {
       const valor = parseFloat(editValue.replace(/[^\d.,]/g, "").replace(",", ".")) || 0;
-      await playbookService.updateItem(itemId, { 
+      await playbookService.updateItem(itemId, {
         valor_contratado: valor,
-        status_contratacao: valor > 0 ? "Negociadas" : undefined
+        status_contratacao: valor > 0 ? "Negociadas" : undefined,
       });
       toast({ title: "Valor atualizado" });
       setEditingId(null);
@@ -92,9 +92,7 @@ export function ContractingTable({ items, destino, onUpdate }: ContractingTableP
               <TableCell className="font-medium text-sm">
                 <div className="flex flex-col">
                   <span className="text-foreground">{item.descricao}</span>
-                  {item.codigo && (
-                    <span className="text-xs text-muted-foreground">{item.codigo}</span>
-                  )}
+                  {item.codigo && <span className="text-xs text-muted-foreground">{item.codigo}</span>}
                 </div>
               </TableCell>
               <TableCell className="text-right text-sm text-muted-foreground">
@@ -129,16 +127,13 @@ export function ContractingTable({ items, destino, onUpdate }: ContractingTableP
                     </Button>
                   </div>
                 ) : (
-                  <span className={cn(
-                    "text-sm font-medium",
-                    item.valor_contratado && item.valor_contratado > 0 
-                      ? "text-emerald-600" 
-                      : "text-muted-foreground"
-                  )}>
-                    {item.valor_contratado 
-                      ? formatCurrency(item.valor_contratado) 
-                      : "—"
-                    }
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      item.valor_contratado && item.valor_contratado > 0 ? "text-emerald-600" : "text-muted-foreground",
+                    )}
+                  >
+                    {item.valor_contratado ? formatCurrency(item.valor_contratado) : "—"}
                   </span>
                 )}
               </TableCell>
@@ -148,9 +143,7 @@ export function ContractingTable({ items, destino, onUpdate }: ContractingTableP
                   onValueChange={(v) => handleStatusChange(item.id, v)}
                 >
                   <SelectTrigger className="h-7 w-32 text-xs border-none bg-transparent mx-auto">
-                    <SelectValue>
-                      {getStatusBadge(item.status_contratacao)}
-                    </SelectValue>
+                    <SelectValue>{getStatusBadge(item.status_contratacao)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((option) => (
@@ -165,12 +158,7 @@ export function ContractingTable({ items, destino, onUpdate }: ContractingTableP
               </TableCell>
               <TableCell className="text-center">
                 {editingId !== item.id && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => handleStartEdit(item)}
-                  >
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleStartEdit(item)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
