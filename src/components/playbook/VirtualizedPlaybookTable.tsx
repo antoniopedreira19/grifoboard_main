@@ -2,7 +2,19 @@ import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, ChevronDown, ChevronRight, Settings2, Maximize2, Minimize2, X } from "lucide-react";
+import {
+  Edit2,
+  LayoutList,
+  ListTree,
+  Minus,
+  ChevronDown,
+  ChevronRight,
+  Settings2,
+  ChevronsUpDown,
+  Maximize2,
+  Minimize2,
+  X,
+} from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
 import { playbookService } from "@/services/playbookService";
@@ -182,8 +194,8 @@ const PlaybookRow = memo(function PlaybookRow({
         item.nivel === 1 && "bg-blue-50/10 text-blue-900",
       )}
     >
-      {/* Nível - ALTERADO: items-start e mt-0.5 para alinhar com o topo do texto da descrição */}
-      <div className="w-[70px] flex items-start justify-center py-2 flex-shrink-0 mt-0.5">
+      {/* Nível */}
+      <div className="w-[70px] flex items-center justify-center py-2 flex-shrink-0">
         {item.nivel === 0 && (
           <div className="flex items-center gap-1">
             {onToggleCollapse && (
@@ -191,7 +203,7 @@ const PlaybookRow = memo(function PlaybookRow({
                 {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             )}
-            <Badge className="bg-slate-800 h-4 text-[8px] px-1.5 hover:bg-slate-700">Etapa</Badge>
+            <Badge className="bg-slate-800 h-5 text-[10px]">NV 0</Badge>
           </div>
         )}
         {item.nivel === 1 && (
@@ -201,14 +213,14 @@ const PlaybookRow = memo(function PlaybookRow({
                 {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             )}
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800 h-4 text-[8px] px-1.5 hover:bg-blue-200">
-              Subetapa
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800 h-5 text-[10px]">
+              NV 1
             </Badge>
           </div>
         )}
         {item.nivel === 2 && (
-          <Badge variant="outline" className="border-slate-200 text-slate-400 h-4 text-[8px] px-1.5">
-            Item
+          <Badge variant="outline" className="border-slate-200 text-slate-400 h-5 text-[10px]">
+            ITEM
           </Badge>
         )}
       </div>
@@ -222,6 +234,11 @@ const PlaybookRow = memo(function PlaybookRow({
             item.nivel === 2 && "pl-8 text-slate-600",
           )}
         >
+          <span className="flex-shrink-0 mt-0.5">
+            {item.nivel === 0 && <LayoutList className="h-4 w-4 text-slate-700" />}
+            {item.nivel === 1 && <ListTree className="h-4 w-4 text-blue-400" />}
+            {item.nivel === 2 && <Minus className="h-3 w-3 text-slate-300" />}
+          </span>
           <span
             className="break-words whitespace-normal leading-tight line-clamp-2"
             title={item.descricao || item.etapa}
