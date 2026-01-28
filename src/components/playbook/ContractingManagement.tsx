@@ -16,6 +16,7 @@ import {
   FileCheck,
   Calendar as CalendarIcon,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -72,7 +73,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     statusContratacao: "a_negociar",
   });
 
-  // --- MODAL DE DATA LIMITE (Novo) ---
+  // --- MODAL DE DATA LIMITE ---
   const [dateModalOpen, setDateModalOpen] = useState(false);
   const [itemForDate, setItemForDate] = useState<CostItem | null>(null);
   const [newDate, setNewDate] = useState<string>("");
@@ -301,10 +302,9 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // --- NOVA LÓGICA DE DATA ---
+  // --- LÓGICA DE DATA ---
   const handleOpenDateModal = (costItem: CostItem) => {
     setItemForDate(costItem);
-    // Pega apenas a parte da data YYYY-MM-DD se existir
     const currentDate = costItem.dataLimite ? costItem.dataLimite.split("T")[0] : "";
     setNewDate(currentDate);
     setDateModalOpen(true);
@@ -313,13 +313,35 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const handleSaveDate = async () => {
     if (!itemForDate) return;
     try {
-      await playbookService.atualizarItem(itemForDate.itemId, { data_limite: newDate });
+      await playbookService.atualizarItem(itemForDate.itemId, { data_limite: newDate || null });
+
+      // Atualiza o estado local para refletir na UI instantaneamente
+      setItems((prev) =>
+        prev.map((item) => (item.id === itemForDate.itemId ? { ...item, data_limite: newDate || null } : item)),
+      );
+
       toast({ title: "Data limite atualizada" });
       setDateModalOpen(false);
       setItemForDate(null);
-      loadItems();
     } catch (error) {
       toast({ title: "Erro ao salvar data", variant: "destructive" });
+    }
+  };
+
+  // Nova função para limpar a data
+  const handleClearDate = async () => {
+    if (!itemForDate) return;
+    try {
+      await playbookService.atualizarItem(itemForDate.itemId, { data_limite: null });
+
+      // Atualiza o estado local
+      setItems((prev) => prev.map((item) => (item.id === itemForDate.itemId ? { ...item, data_limite: null } : item)));
+
+      toast({ title: "Data limite removida" });
+      setDateModalOpen(false);
+      setItemForDate(null);
+    } catch (error) {
+      toast({ title: "Erro ao remover data", variant: "destructive" });
     }
   };
 
@@ -441,8 +463,8 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                 <TableHead className="text-xs font-bold w-[110px]">Tipo</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Valor Meta</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Contratado</TableHead>
-                {/* NOVA POSIÇÃO DA COLUNA DATA LIMITE */}
-                <TableHead className="text-xs font-bold w-[120px] text-center">Data Limite</TableHead>
+                {/* NOVA COLUNA DATA LIMITE DEPOIS DE CONTRATADO */}
+                <TableHead className="text-xs font-bold w-[130px] text-center">Data Limite</TableHead>
                 <TableHead className="text-xs font-bold w-[150px]">Status</TableHead>
                 <TableHead className="text-xs font-bold w-[80px] text-center">Ações</TableHead>
               </TableRow>
@@ -455,6 +477,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                   costItem.valorContratado &&
                   costItem.valorContratado > 0;
                 const hasObservacao = costItem.observacao && costItem.observacao.trim().length > 0;
+                // Verifica se está atrasado (só se não estiver negociado e tiver data)
                 const isLate =
                   costItem.dataLimite &&
                   new Date(costItem.dataLimite) < new Date() &&
@@ -477,7 +500,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                       </span>
                     </TableCell>
 
-                    {/* CÉLULA COM BOTÃO PARA MODAL DE DATA */}
+                    {/* CÉLULA DATA LIMITE COM BOTÃO DE MODAL */}
                     <TableCell className="text-center">
                       <Button
                         variant="ghost"
@@ -489,7 +512,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                         )}
                         onClick={() => handleOpenDateModal(costItem)}
                       >
-                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        <CalendarIcon className="mr-2 h-3 w-3 opacity-70" />
                         {formatDateDisplay(costItem.dataLimite)}
                       </Button>
                     </TableCell>
@@ -715,13 +738,24 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
               <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="w-full" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDateModalOpen(false)}>
-              Cancelar
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={handleClearDate}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Data
             </Button>
-            <Button onClick={handleSaveDate} className="bg-[#A47528] hover:bg-[#8B6320]">
-              Salvar Data
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDateModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveDate} className="bg-[#A47528] hover:bg-[#8B6320]">
+                Salvar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
