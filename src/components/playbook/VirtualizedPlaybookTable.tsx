@@ -2,6 +2,8 @@ import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Edit2,
   LayoutList,
@@ -14,6 +16,7 @@ import {
   Maximize2,
   Minimize2,
   X,
+  Filter,
 } from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
@@ -293,7 +296,7 @@ const PlaybookRow = memo(function PlaybookRow({
       {/* Ações - Mínimo */}
       {!readOnly && (
         <div className="w-[50px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
-          {isHighPercentage && <DestinationSelector item={item} onDestinationChange={onDestinationChange} />}
+          <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
         </div>
       )}
     </div>
@@ -312,16 +315,42 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
   const { toast } = useToast();
   const parentRef = useRef<HTMLDivElement>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [filterHighPercentage, setFilterHighPercentage] = useState(false);
 
-  // Memoize visible items based on collapsed sections
+  // Memoize visible items based on collapsed sections and percentage filter
   const visibleItems = useMemo(() => {
-    if (collapsedSections.size === 0) return data;
+    let filteredData = data;
+    
+    // Apply percentage filter if enabled (only for level 2 items, keep parents)
+    if (filterHighPercentage) {
+      const highPercentageIds = new Set<string>();
+      const parentIds = new Set<string>();
+      
+      // First pass: identify high percentage items and their parents
+      for (const item of data) {
+        const total = (item as any).precoTotal || item.preco_total || 0;
+        const percentage = grandTotalOriginal > 0 ? (total / grandTotalOriginal) * 100 : 0;
+        
+        if (item.nivel === 2 && percentage >= 2) {
+          highPercentageIds.add(item.id);
+        } else if (item.nivel === 0 || item.nivel === 1) {
+          parentIds.add(item.id);
+        }
+      }
+      
+      // Keep parents and high percentage items
+      filteredData = data.filter(item => 
+        item.nivel === 0 || item.nivel === 1 || highPercentageIds.has(item.id)
+      );
+    }
+    
+    if (collapsedSections.size === 0) return filteredData;
 
-    const result: typeof data = [];
+    const result: typeof filteredData = [];
     let skipUntilLevel: number | null = null;
 
-    for (let i = 0; i < data.length; i++) {
-      const item = data[i];
+    for (let i = 0; i < filteredData.length; i++) {
+      const item = filteredData[i];
       const nivel = item.nivel ?? 2;
 
       // If we're skipping and this item is at a level <= skipUntilLevel, stop skipping
@@ -341,7 +370,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
     }
 
     return result;
-  }, [data, collapsedSections]);
+  }, [data, collapsedSections, filterHighPercentage, grandTotalOriginal]);
 
   const virtualizer = useVirtualizer({
     count: visibleItems.length,
@@ -417,27 +446,43 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
         <span className="text-xs text-slate-500">
           {data.length} itens • {visibleItems.length} visíveis
         </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={handleExpandAll}
-            disabled={isAllExpanded}
-          >
-            <Maximize2 className="h-3 w-3" />
-            Expandir Todos
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={handleCollapseAll}
-            disabled={isAllCollapsed}
-          >
-            <Minimize2 className="h-3 w-3" />
-            Recolher Todos
-          </Button>
+        <div className="flex items-center gap-4">
+          {/* Filter toggle */}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="filter-percentage"
+              checked={filterHighPercentage}
+              onCheckedChange={setFilterHighPercentage}
+              className="h-4 w-7"
+            />
+            <Label htmlFor="filter-percentage" className="text-xs text-slate-600 cursor-pointer flex items-center gap-1">
+              <Filter className="h-3 w-3" />
+              Só ≥2%
+            </Label>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={handleExpandAll}
+              disabled={isAllExpanded}
+            >
+              <Maximize2 className="h-3 w-3" />
+              Expandir Todos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={handleCollapseAll}
+              disabled={isAllCollapsed}
+            >
+              <Minimize2 className="h-3 w-3" />
+              Recolher Todos
+            </Button>
+          </div>
         </div>
       </div>
 
