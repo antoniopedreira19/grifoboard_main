@@ -4,7 +4,19 @@ import { PlaybookItem } from "@/types/playbook";
 import { playbookService } from "@/services/playbookService";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Truck, User, Loader2, Edit2, Clock, MessageSquare, CheckCircle2, FileCheck } from "lucide-react";
+import {
+  Building2,
+  Truck,
+  User,
+  Loader2,
+  Edit2,
+  Clock,
+  MessageSquare,
+  CheckCircle2,
+  FileCheck,
+  Calendar as CalendarIcon,
+  RefreshCw,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type DestinationType = "obra_direta" | "fornecimento" | "cliente";
 type StatusContratacao = "a_negociar" | "negociando" | "negociado";
@@ -30,7 +44,7 @@ interface CostItem {
   valorContratado?: number;
   observacao?: string;
   statusContratacao?: StatusContratacao;
-  dataLimite?: string | null; // Adicionado dataLimite
+  dataLimite?: string | null;
 }
 
 interface ContractingManagementProps {
@@ -45,7 +59,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const [activeDestination, setActiveDestination] = useState<DestinationType>("obra_direta");
   const [configCoef, setConfigCoef] = useState<number>(coeficiente);
 
-  // Modal de edição
+  // --- MODAL DE EDIÇÃO (Texto/Valor/Status) ---
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CostItem | null>(null);
   const [editValues, setEditValues] = useState<{
@@ -58,7 +72,12 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     statusContratacao: "a_negociar",
   });
 
-  // Modal de valor negociado (quando muda status para negociado)
+  // --- MODAL DE DATA LIMITE (Novo) ---
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [itemForDate, setItemForDate] = useState<CostItem | null>(null);
+  const [newDate, setNewDate] = useState<string>("");
+
+  // --- MODAL DE VALOR NEGOCIADO ---
   const [valorNegociadoModalOpen, setValorNegociadoModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ itemId: string; tipo: string } | null>(null);
   const [valorNegociado, setValorNegociado] = useState<number>(0);
@@ -91,6 +110,15 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
+  const formatDateDisplay = (dateString?: string | null) => {
+    if (!dateString) return "Definir Data";
+    try {
+      return format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   const getItemsForDestination = (destination: DestinationType): CostItem[] => {
     const result: CostItem[] = [];
 
@@ -106,7 +134,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
           statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
-          dataLimite: item.data_limite, // Mapeando data limite
+          dataLimite: item.data_limite,
         });
       }
       if (item.destino_materiais === destination && item.valor_materiais > 0) {
@@ -120,7 +148,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
           statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
-          dataLimite: item.data_limite, // Mapeando data limite
+          dataLimite: item.data_limite,
         });
       }
     });
@@ -128,30 +156,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     return result;
   };
 
-  // Função para lidar com a mudança de data
-  const handleDateChange = async (itemId: string, date: string) => {
-    try {
-      await playbookService.atualizarItem(itemId, { data_limite: date });
-      // Atualiza estado local para refletir na UI sem recarregar tudo
-      setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, data_limite: date } : item)));
-      toast({ title: "Data limite atualizada" });
-    } catch (error) {
-      toast({ title: "Erro ao atualizar data", variant: "destructive" });
-    }
-  };
-
-  const getDestinationTotals = (destination: DestinationType) => {
-    const costItems = getItemsForDestination(destination);
-    const totalMeta = costItems.reduce((sum, item) => sum + item.valorMeta, 0);
-    const totalContratado = costItems.reduce((sum, item) => sum + (item.valorContratado || 0), 0);
-    const itemsNegociados = costItems.filter((item) => item.statusContratacao === "negociado").length;
-    const diferenca = totalContratado - totalMeta;
-    const percentual = totalMeta > 0 ? (diferenca / totalMeta) * 100 : 0;
-
-    return { totalMeta, totalContratado, itemsNegociados, diferenca, percentual, total: costItems.length };
-  };
-
-  // Resumo financeiro por status
+  // ... (Funções de resumo financeiro mantidas iguais)
   const getFinancialSummaryByStatus = (destination: DestinationType) => {
     const costItems = getItemsForDestination(destination);
     const totalMeta = costItems.reduce((sum, item) => sum + item.valorMeta, 0);
@@ -190,30 +195,11 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     fornecimento: getItemsForDestination("fornecimento").length,
     cliente: getItemsForDestination("cliente").length,
   });
-
   const counts = getCounts();
 
-  const getTipoLabel = (tipo: string) => {
-    switch (tipo) {
-      case "mao_de_obra":
-        return "Mão de Obra";
-      case "materiais":
-        return "Materiais";
-      default:
-        return tipo;
-    }
-  };
-
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case "mao_de_obra":
-        return "bg-blue-100 text-blue-800";
-      case "materiais":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
+  const getTipoLabel = (tipo: string) => (tipo === "mao_de_obra" ? "Mão de Obra" : "Materiais");
+  const getTipoColor = (tipo: string) =>
+    tipo === "mao_de_obra" ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800";
 
   const getStatusLabel = (status: StatusContratacao) => {
     switch (status) {
@@ -254,7 +240,8 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // Abrir modal de edição
+  // --- HANDLERS ---
+
   const handleOpenEditModal = (costItem: CostItem) => {
     setEditingItem(costItem);
     setEditValues({
@@ -265,7 +252,6 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     setEditModalOpen(true);
   };
 
-  // Salvar edição
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     try {
@@ -283,19 +269,14 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // Mudar status direto na tabela
   const handleStatusChange = async (costItem: CostItem, newStatus: StatusContratacao) => {
     if (newStatus === "negociado") {
-      // Abre modal para pedir valor negociado
       setPendingStatusChange({ itemId: costItem.itemId, tipo: costItem.tipo });
       setValorNegociado(costItem.valorContratado || costItem.valorMeta);
       setValorNegociadoModalOpen(true);
     } else {
-      // Atualiza direto
       try {
-        await playbookService.atualizarItem(costItem.itemId, {
-          status_contratacao: newStatus,
-        });
+        await playbookService.atualizarItem(costItem.itemId, { status_contratacao: newStatus });
         toast({ title: "Status atualizado" });
         loadItems();
       } catch (error) {
@@ -304,7 +285,6 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // Confirmar valor negociado
   const handleConfirmNegociado = async () => {
     if (!pendingStatusChange) return;
     try {
@@ -321,24 +301,39 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
-  // Tabela de resumo financeiro por status
+  // --- NOVA LÓGICA DE DATA ---
+  const handleOpenDateModal = (costItem: CostItem) => {
+    setItemForDate(costItem);
+    // Pega apenas a parte da data YYYY-MM-DD se existir
+    const currentDate = costItem.dataLimite ? costItem.dataLimite.split("T")[0] : "";
+    setNewDate(currentDate);
+    setDateModalOpen(true);
+  };
+
+  const handleSaveDate = async () => {
+    if (!itemForDate) return;
+    try {
+      await playbookService.atualizarItem(itemForDate.itemId, { data_limite: newDate });
+      toast({ title: "Data limite atualizada" });
+      setDateModalOpen(false);
+      setItemForDate(null);
+      loadItems();
+    } catch (error) {
+      toast({ title: "Erro ao salvar data", variant: "destructive" });
+    }
+  };
+
+  // --- RENDERIZADORES ---
+
   const renderFinancialSummary = (destination: DestinationType) => {
     const { summary, totalMeta, totalContratado, totalVerba, percentVerbaTotal } =
       getFinancialSummaryByStatus(destination);
-
     if (totalMeta === 0) return null;
 
-    const getStatusColor = (status: StatusContratacao) => {
-      switch (status) {
-        case "negociado":
-          return "text-emerald-700";
-        case "negociando":
-          return "text-amber-700";
-        case "a_negociar":
-          return "text-slate-700";
-        default:
-          return "text-slate-700";
-      }
+    const getRowColor = (status: StatusContratacao) => {
+      if (status === "negociado") return "text-emerald-700";
+      if (status === "negociando") return "text-amber-700";
+      return "text-slate-700";
     };
 
     return (
@@ -376,7 +371,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
             <tbody>
               {summary.map((row) => (
                 <tr key={row.status} className="border-b border-slate-200 last:border-0">
-                  <td className={cn("py-2 px-3 font-semibold text-xs", getStatusColor(row.status))}>
+                  <td className={cn("py-2 px-3 font-semibold text-xs", getRowColor(row.status))}>
                     {getStatusLabel(row.status).toUpperCase()}
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-medium text-[#A47528]">
@@ -443,10 +438,11 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="text-xs font-bold">Descrição</TableHead>
-                <TableHead className="text-xs font-bold w-[120px] text-center">Data Limite</TableHead>
                 <TableHead className="text-xs font-bold w-[110px]">Tipo</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Valor Meta</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Contratado</TableHead>
+                {/* NOVA POSIÇÃO DA COLUNA DATA LIMITE */}
+                <TableHead className="text-xs font-bold w-[120px] text-center">Data Limite</TableHead>
                 <TableHead className="text-xs font-bold w-[150px]">Status</TableHead>
                 <TableHead className="text-xs font-bold w-[80px] text-center">Ações</TableHead>
               </TableRow>
@@ -458,20 +454,15 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                   (costItem.statusContratacao === "negociado" || costItem.statusContratacao === "negociando") &&
                   costItem.valorContratado &&
                   costItem.valorContratado > 0;
-                const StatusIcon = getStatusIcon(costItem.statusContratacao || "a_negociar");
                 const hasObservacao = costItem.observacao && costItem.observacao.trim().length > 0;
+                const isLate =
+                  costItem.dataLimite &&
+                  new Date(costItem.dataLimite) < new Date() &&
+                  costItem.statusContratacao !== "negociado";
 
                 return (
                   <TableRow key={uniqueKey} className="hover:bg-slate-50/50">
                     <TableCell className="text-sm font-medium">{costItem.descricao}</TableCell>
-                    <TableCell className="text-center p-1">
-                      <Input
-                        type="date"
-                        className="h-7 w-full text-[10px] bg-transparent border-none shadow-none focus:bg-white focus:border-input transition-colors text-center"
-                        value={costItem.dataLimite ? costItem.dataLimite.split("T")[0] : ""}
-                        onChange={(e) => handleDateChange(costItem.itemId, e.target.value)}
-                      />
-                    </TableCell>
                     <TableCell>
                       <Badge className={cn("text-[10px] whitespace-nowrap", getTipoColor(costItem.tipo))}>
                         {getTipoLabel(costItem.tipo)}
@@ -485,6 +476,24 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                         {hasContrato ? formatCurrency(costItem.valorContratado!) : "—"}
                       </span>
                     </TableCell>
+
+                    {/* CÉLULA COM BOTÃO PARA MODAL DE DATA */}
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 text-xs font-normal border border-transparent hover:border-slate-200",
+                          isLate ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-slate-600 hover:bg-slate-50",
+                          !costItem.dataLimite && "text-slate-400 italic",
+                        )}
+                        onClick={() => handleOpenDateModal(costItem)}
+                      >
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {formatDateDisplay(costItem.dataLimite)}
+                      </Button>
+                    </TableCell>
+
                     <TableCell>
                       <Select
                         value={costItem.statusContratacao || "a_negociar"}
@@ -569,9 +578,14 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Farol de Contratações</h2>
-        <p className="text-slate-600">Acompanhe o status das negociações e valores contratados.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Farol de Contratações</h2>
+          <p className="text-slate-600">Acompanhe o status das negociações e valores contratados.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={loadItems} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Atualizar
+        </Button>
       </div>
 
       <Tabs value={activeDestination} onValueChange={(v) => setActiveDestination(v as DestinationType)}>
@@ -606,7 +620,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
         </div>
       </Tabs>
 
-      {/* Modal de Edição */}
+      {/* Modal de Edição Geral */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -680,6 +694,33 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
             </Button>
             <Button onClick={handleSaveEdit} className="bg-[#A47528] hover:bg-[#8B6320]">
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Data Limite */}
+      <Dialog open={dateModalOpen} onOpenChange={setDateModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-slate-500" />
+              Definir Data Limite
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-600">Escolha a data limite para a contratação deste item:</p>
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="w-full" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveDate} className="bg-[#A47528] hover:bg-[#8B6320]">
+              Salvar Data
             </Button>
           </DialogFooter>
         </DialogContent>
