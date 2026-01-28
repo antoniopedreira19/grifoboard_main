@@ -321,27 +321,17 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
   const visibleItems = useMemo(() => {
     let filteredData = data;
     
-    // Apply percentage filter if enabled (only for level 2 items, keep parents)
+    // Apply percentage filter if enabled - show only items >= 2%
     if (filterHighPercentage) {
-      const highPercentageIds = new Set<string>();
-      const parentIds = new Set<string>();
-      
-      // First pass: identify high percentage items and their parents
-      for (const item of data) {
+      filteredData = data.filter(item => {
+        // Always keep parents (nivel 0 and 1)
+        if (item.nivel === 0 || item.nivel === 1) return true;
+        
+        // For nivel 2 items, only keep if percentage >= 2%
         const total = (item as any).precoTotal || item.preco_total || 0;
         const percentage = grandTotalOriginal > 0 ? (total / grandTotalOriginal) * 100 : 0;
-        
-        if (item.nivel === 2 && percentage >= 2) {
-          highPercentageIds.add(item.id);
-        } else if (item.nivel === 0 || item.nivel === 1) {
-          parentIds.add(item.id);
-        }
-      }
-      
-      // Keep parents and high percentage items
-      filteredData = data.filter(item => 
-        item.nivel === 0 || item.nivel === 1 || highPercentageIds.has(item.id)
-      );
+        return percentage >= 2;
+      });
     }
     
     if (collapsedSections.size === 0) return filteredData;
