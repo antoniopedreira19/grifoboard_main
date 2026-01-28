@@ -172,6 +172,7 @@ const PlaybookRow = memo(function PlaybookRow({
   onDestinationChange,
   onEdit,
   readOnly,
+  filterHighPercentage,
 }: {
   item: any;
   grandTotalOriginal: number;
@@ -180,6 +181,7 @@ const PlaybookRow = memo(function PlaybookRow({
   onDestinationChange: (itemId: string, field: string, value: string) => void;
   onEdit?: (item: PlaybookItem) => void;
   readOnly?: boolean;
+  filterHighPercentage?: boolean;
 }) {
   const percentage = useMemo(() => {
     const total = item.precoTotal || item.preco_total || 0;
@@ -296,7 +298,9 @@ const PlaybookRow = memo(function PlaybookRow({
       {/* Ações - Mínimo */}
       {!readOnly && (
         <div className="w-[50px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
-          <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
+          {(!filterHighPercentage || isHighPercentage) && (
+            <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
+          )}
         </div>
       )}
     </div>
@@ -533,6 +537,7 @@ export const VirtualizedPlaybookTable = memo(function VirtualizedPlaybookTable({
                   onDestinationChange={handleDestinationChange}
                   onEdit={onEdit}
                   readOnly={readOnly}
+                  filterHighPercentage={filterHighPercentage}
                 />
               </div>
             );
