@@ -30,6 +30,7 @@ interface CostItem {
   valorContratado?: number;
   observacao?: string;
   statusContratacao?: StatusContratacao;
+  dataLimite?: string | null; // Adicionado dataLimite
 }
 
 interface ContractingManagementProps {
@@ -105,6 +106,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
           statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
+          dataLimite: item.data_limite, // Mapeando data limite
         });
       }
       if (item.destino_materiais === destination && item.valor_materiais > 0) {
@@ -118,11 +120,24 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           valorContratado: item.valor_contratado,
           observacao: item.observacao,
           statusContratacao: (item.status_contratacao as StatusContratacao) || "a_negociar",
+          dataLimite: item.data_limite, // Mapeando data limite
         });
       }
     });
 
     return result;
+  };
+
+  // Função para lidar com a mudança de data
+  const handleDateChange = async (itemId: string, date: string) => {
+    try {
+      await playbookService.atualizarItem(itemId, { data_limite: date });
+      // Atualiza estado local para refletir na UI sem recarregar tudo
+      setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, data_limite: date } : item)));
+      toast({ title: "Data limite atualizada" });
+    } catch (error) {
+      toast({ title: "Erro ao atualizar data", variant: "destructive" });
+    }
   };
 
   const getDestinationTotals = (destination: DestinationType) => {
@@ -428,6 +443,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="text-xs font-bold">Descrição</TableHead>
+                <TableHead className="text-xs font-bold w-[120px] text-center">Data Limite</TableHead>
                 <TableHead className="text-xs font-bold w-[110px]">Tipo</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Valor Meta</TableHead>
                 <TableHead className="text-xs font-bold text-right w-[120px]">Contratado</TableHead>
@@ -448,6 +464,14 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                 return (
                   <TableRow key={uniqueKey} className="hover:bg-slate-50/50">
                     <TableCell className="text-sm font-medium">{costItem.descricao}</TableCell>
+                    <TableCell className="text-center p-1">
+                      <Input
+                        type="date"
+                        className="h-7 w-full text-[10px] bg-transparent border-none shadow-none focus:bg-white focus:border-input transition-colors text-center"
+                        value={costItem.dataLimite ? costItem.dataLimite.split("T")[0] : ""}
+                        onChange={(e) => handleDateChange(costItem.itemId, e.target.value)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Badge className={cn("text-[10px] whitespace-nowrap", getTipoColor(costItem.tipo))}>
                         {getTipoLabel(costItem.tipo)}
