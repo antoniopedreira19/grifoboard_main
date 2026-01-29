@@ -17,6 +17,7 @@ import {
   Calendar as CalendarIcon,
   RefreshCw,
   Trash2,
+  Plus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,6 +85,17 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const [valorNegociadoModalOpen, setValorNegociadoModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ itemId: string; tipo: string } | null>(null);
   const [valorNegociado, setValorNegociado] = useState<number>(0);
+
+  // --- MODAL DE CRIAÇÃO MANUAL ---
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createValues, setCreateValues] = useState({
+    descricao: "",
+    tipo: "mao_de_obra" as "mao_de_obra" | "materiais",
+    valorMeta: 0,
+    valorContratado: 0,
+    dataLimite: "",
+    statusContratacao: "a_negociar" as StatusContratacao,
+  });
 
   useEffect(() => {
     loadItems();
@@ -359,6 +371,61 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     }
   };
 
+  // --- HANDLER CRIAR MANUAL ---
+  const handleOpenCreateModal = () => {
+    setCreateValues({
+      descricao: "",
+      tipo: "mao_de_obra",
+      valorMeta: 0,
+      valorContratado: 0,
+      dataLimite: "",
+      statusContratacao: "a_negociar",
+    });
+    setCreateModalOpen(true);
+  };
+
+  const handleSaveCreate = async () => {
+    if (!userSession?.obraAtiva?.id || !createValues.descricao.trim()) {
+      toast({ title: "Preencha a descrição", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Determine which destination field to use based on type
+      const destinationField = createValues.tipo === "mao_de_obra" ? "destino_mao_de_obra" : "destino_materiais";
+      const valueField = createValues.tipo === "mao_de_obra" ? "valor_mao_de_obra" : "valor_materiais";
+
+      // Calculate the original value (reverse from meta using coefficient)
+      const valorOriginal = configCoef > 0 ? createValues.valorMeta / configCoef : createValues.valorMeta;
+
+      // Get max ordem for current items
+      const maxOrdem = items.reduce((max, item) => Math.max(max, item.ordem || 0), 0);
+
+      const newItem = {
+        obra_id: userSession.obraAtiva.id,
+        descricao: createValues.descricao,
+        [valueField]: valorOriginal,
+        [destinationField]: activeDestination,
+        valor_contratado: createValues.valorContratado || null,
+        data_limite: createValues.dataLimite || null,
+        status_contratacao: createValues.statusContratacao,
+        nivel: 2,
+        ordem: maxOrdem + 1,
+        unidade: "vb",
+        qtd: 1,
+        preco_total: valorOriginal,
+      };
+
+      await playbookService.criarItem(newItem as any);
+      toast({ title: "Item criado com sucesso!" });
+      setCreateModalOpen(false);
+      loadItems();
+    } catch (error) {
+      console.error("Erro ao criar item:", error);
+      toast({ title: "Erro ao criar item", variant: "destructive" });
+    }
+  };
+
   // --- RENDERIZADORES ---
 
   const renderFinancialSummary = (destination: DestinationType) => {
@@ -620,9 +687,14 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
           <h2 className="text-2xl font-bold text-slate-800">Farol de Contratações</h2>
           <p className="text-slate-600">Acompanhe o status das negociações e valores contratados.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadItems} className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleOpenCreateModal} className="gap-2 bg-[#A47528] hover:bg-[#8B6320]">
+            <Plus className="h-4 w-4" /> Criar Item
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadItems} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Atualizar
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeDestination} onValueChange={(v) => setActiveDestination(v as DestinationType)}>
@@ -827,6 +899,112 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
             </Button>
             <Button onClick={handleConfirmNegociado} className="bg-emerald-600 hover:bg-emerald-700">
               Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Criação Manual */}
+      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-[#A47528]" />
+              Criar Item Manual
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-descricao">Descrição *</Label>
+              <Input
+                id="create-descricao"
+                value={createValues.descricao}
+                onChange={(e) => setCreateValues((prev) => ({ ...prev, descricao: e.target.value }))}
+                placeholder="Ex: Serviço de pintura externa"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select
+                  value={createValues.tipo}
+                  onValueChange={(v) => setCreateValues((prev) => ({ ...prev, tipo: v as "mao_de_obra" | "materiais" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mao_de_obra">Mão de Obra</SelectItem>
+                    <SelectItem value="materiais">Materiais</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={createValues.statusContratacao}
+                  onValueChange={(v) => setCreateValues((prev) => ({ ...prev, statusContratacao: v as StatusContratacao }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a_negociar">A Negociar</SelectItem>
+                    <SelectItem value="negociando">Negociando</SelectItem>
+                    <SelectItem value="negociado">Negociado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-valorMeta">Valor Meta</Label>
+                <Input
+                  id="create-valorMeta"
+                  type="number"
+                  value={createValues.valorMeta}
+                  onChange={(e) => setCreateValues((prev) => ({ ...prev, valorMeta: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-valorContratado">Valor Contratado</Label>
+                <Input
+                  id="create-valorContratado"
+                  type="number"
+                  value={createValues.valorContratado}
+                  onChange={(e) => setCreateValues((prev) => ({ ...prev, valorContratado: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-dataLimite">Data Limite</Label>
+              <Input
+                id="create-dataLimite"
+                type="date"
+                value={createValues.dataLimite}
+                onChange={(e) => setCreateValues((prev) => ({ ...prev, dataLimite: e.target.value }))}
+              />
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-50 border">
+              <p className="text-xs text-slate-500">
+                O item será criado na aba <span className="font-semibold text-[#A47528]">
+                  {activeDestination === "obra_direta" ? "Obra" : activeDestination === "fornecimento" ? "Fornecimento" : "Cliente"}
+                </span> atualmente selecionada.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveCreate} className="bg-[#A47528] hover:bg-[#8B6320]">
+              Criar Item
             </Button>
           </DialogFooter>
         </DialogContent>

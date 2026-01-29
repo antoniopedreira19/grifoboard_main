@@ -87,4 +87,10 @@ export const playbookService = {
     const { error } = await supabase.from("playbook_items").delete().eq("id", id);
     if (error) throw error;
   },
+
+  async criarItem(item: PlaybookInsert) {
+    const { data, error } = await supabase.from("playbook_items").insert(item).select().single();
+    if (error) throw error;
+    return data;
+  },
 };
