@@ -67,10 +67,12 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
     valorContratado: number;
     observacao: string;
     statusContratacao: StatusContratacao;
+    destino: DestinationType;
   }>({
     valorContratado: 0,
     observacao: "",
     statusContratacao: "a_negociar",
+    destino: "obra_direta",
   });
 
   // --- MODAL DE DATA LIMITE ---
@@ -249,6 +251,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
       valorContratado: costItem.valorContratado || 0,
       observacao: costItem.observacao || "",
       statusContratacao: costItem.statusContratacao || "a_negociar",
+      destino: costItem.destino,
     });
     setEditModalOpen(true);
   };
@@ -256,11 +259,22 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     try {
-      await playbookService.atualizarItem(editingItem.itemId, {
+      // Prepare destination field update based on item type
+      const destinationField = editingItem.tipo === "mao_de_obra" ? "destino_mao_de_obra" : "destino_materiais";
+      
+      // If destination changed, clear old destination and set new one
+      const updatePayload: Record<string, any> = {
         valor_contratado: editValues.valorContratado,
         observacao: editValues.observacao,
         status_contratacao: editValues.statusContratacao,
-      });
+      };
+
+      // Update destination if changed
+      if (editValues.destino !== editingItem.destino) {
+        updatePayload[destinationField] = editValues.destino;
+      }
+
+      await playbookService.atualizarItem(editingItem.itemId, updatePayload);
       toast({ title: "Salvo com sucesso" });
       setEditModalOpen(false);
       setEditingItem(null);
@@ -655,7 +669,7 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                 <Label className="text-xs text-slate-500">Descrição</Label>
                 <p className="text-sm font-medium">{editingItem.descricao}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-500">Tipo</Label>
                   <Badge className={cn("text-xs", getTipoColor(editingItem.tipo))}>
@@ -665,6 +679,24 @@ export function ContractingManagement({ coeficiente = 0.57 }: ContractingManagem
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-500">Valor Meta</Label>
                   <p className="text-sm font-bold text-[#A47528]">{formatCurrency(editingItem.valorMeta)}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Destino</Label>
+                  <Select
+                    value={editValues.destino}
+                    onValueChange={(v) =>
+                      setEditValues((prev) => ({ ...prev, destino: v as DestinationType }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="obra_direta">Obra</SelectItem>
+                      <SelectItem value="fornecimento">Fornecimento</SelectItem>
+                      <SelectItem value="cliente">Cliente</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
