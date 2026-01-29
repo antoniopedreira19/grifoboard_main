@@ -17,6 +17,7 @@ import {
   Minimize2,
   X,
   Filter,
+  Check,
 } from "lucide-react";
 import { PlaybookItem } from "@/types/playbook";
 import { cn } from "@/lib/utils";
@@ -297,7 +298,10 @@ const PlaybookRow = memo(function PlaybookRow({
 
       {/* Ações - Mínimo */}
       {!readOnly && (
-        <div className="w-[50px] flex items-center justify-center gap-0.5 py-2 flex-shrink-0">
+        <div className="w-[50px] flex items-center justify-center gap-1 py-2 flex-shrink-0">
+          {(item.destino_mao_de_obra || item.destino_materiais || item.destino_equipamentos || item.destino_verbas) && (
+            <Check className="h-3.5 w-3.5 text-emerald-600" />
+          )}
           {(!filterHighPercentage || isHighPercentage) && (
             <DestinationSelector item={item} onDestinationChange={onDestinationChange} />
           )}
