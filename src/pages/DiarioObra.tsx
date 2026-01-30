@@ -50,6 +50,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PhotoUploader } from "@/components/diario/PhotoUploader";
 import { PhotoGallery } from "@/components/diario/PhotoGallery";
+import { DiarioExportDialog } from "@/components/diario/DiarioExportDialog";
 
 const DiarioObra = () => {
   const isMobile = useIsMobile();
@@ -414,18 +415,22 @@ const DiarioObra = () => {
                 </p>
               </div>
               
-              {/* Histórico Sheet */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 h-9">
-                    <History className="h-4 w-4" />
-                    {diarioHistory.length > 0 && (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                        {diarioHistory.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </SheetTrigger>
+              <div className="flex items-center gap-2">
+                {/* Export PDF Button Mobile */}
+                <DiarioExportDialog obraId={obraId} obraNome={obraNome || "Obra"} date={date} />
+                
+                {/* Histórico Sheet */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 h-9">
+                      <History className="h-4 w-4" />
+                      {diarioHistory.length > 0 && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                          {diarioHistory.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
                 <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
                   <SheetHeader className="pb-4 border-b">
                     <SheetTitle>Diários Salvos</SheetTitle>
@@ -471,7 +476,8 @@ const DiarioObra = () => {
                     )}
                   </ScrollArea>
                 </SheetContent>
-              </Sheet>
+                </Sheet>
+              </div>
             </div>
           </div>
 
@@ -863,6 +869,9 @@ const DiarioObra = () => {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Export PDF Button Desktop */}
+            <DiarioExportDialog obraId={obraId} obraNome={obraNome || "Obra"} date={date} />
+            
             {!isEditMode && diarioId ? (
               <>
                 <Button
