@@ -1,7 +1,6 @@
-import React, { useState, useCallback } from "react";
-import { Plus, User, Filter, Calendar, FileDown } from "lucide-react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
+import { Plus, User, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -21,7 +20,7 @@ import {
   defaultDropAnimationSideEffects,
   DragOverlay,
 } from "@dnd-kit/core";
-import { parseISO, addDays, differenceInCalendarDays } from "date-fns";
+import { addDays, differenceInCalendarDays } from "date-fns";
 import { PmpKanbanCard } from "./PmpKanbanCard";
 import { PmpKanbanColumn } from "./PmpKanbanColumn";
 import { PmpExportDialog } from "./PmpExportDialog";
@@ -59,6 +58,75 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
+// Componente memoizado para header de semana
+const WeekHeader = React.memo(function WeekHeader({ week, index }: { week: PmpWeek; index: number }) {
+  return (
+    <div className="flex-shrink-0 w-[280px]">
+      <div className="bg-card border border-border rounded-lg p-3 shadow-sm">
+        <div className="flex justify-between items-center mb-1">
+          <span className="font-semibold text-foreground text-sm uppercase">
+            {week.label}
+          </span>
+          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+            {week.year}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground font-medium capitalize">
+          {week.formattedRange}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Componente memoizado para coluna inteira
+const WeekColumn = React.memo(function WeekColumn({
+  week,
+  tasks,
+  onOpenAdd,
+  onOpenEdit,
+  onDelete,
+  onToggleCheck,
+}: {
+  week: PmpWeek;
+  tasks: PmpAtividade[];
+  onOpenAdd: (weekId: string) => void;
+  onOpenEdit: (atividade: PmpAtividade) => void;
+  onDelete: (id: string) => void;
+  onToggleCheck: (id: string, currentStatus: boolean, hasRestrictions: boolean) => void;
+}) {
+  return (
+    <div className="flex-shrink-0 w-[280px] flex flex-col">
+      <div className="bg-muted/50 rounded-lg border border-dashed border-border flex flex-col min-h-[380px] relative">
+        <div className="p-2 pb-14 space-y-2">
+          <PmpKanbanColumn weekId={week.id} tasks={tasks}>
+            {tasks.map((atividade) => (
+              <PmpKanbanCard
+                key={`${atividade.id}::${week.id}`}
+                weekId={week.id}
+                atividade={atividade}
+                onDelete={onDelete}
+                onClick={onOpenEdit}
+                onToggleCheck={onToggleCheck}
+              />
+            ))}
+          </PmpKanbanColumn>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-muted via-muted to-transparent pt-4">
+          <Button
+            variant="ghost"
+            className="w-full bg-card hover:bg-card/80 shadow-sm border border-border text-muted-foreground text-xs h-8"
+            onClick={() => onOpenAdd(week.id)}
+          >
+            <Plus className="h-3 w-3 mr-1" /> Adicionar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   weeks,
   getTasksForWeek,
@@ -78,6 +146,7 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
   obraNome,
 }: PmpKanbanBoardProps) {
   const [activeDragItem, setActiveDragItem] = useState<PmpAtividade | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -113,7 +182,6 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
 
       let novaOrdem = activeTask.ordem || 0;
 
-      // Se soltou sobre um CARD
       if (over.data.current?.type !== "Column") {
         const overTask = over.data.current?.atividade as PmpAtividade;
         if (overTask) {
@@ -128,7 +196,6 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           }
         }
       } else {
-        // Se soltou na COLUNA
         const targetTasks = getTasksForWeek(targetWeekId);
         const maxOrder = targetTasks.reduce((max, t) => Math.max(max, t.ordem || 0), 0);
         novaOrdem = maxOrder + 1000;
@@ -170,15 +237,28 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
     [getTasksForWeek, onMove]
   );
 
-  // Weeks filtradas baseadas nos filtros de intervalo
-  const filteredWeeks = weeks.slice(weekStartFilter, weekEndFilter + 1);
+  // Weeks filtradas - memoizado
+  const filteredWeeks = useMemo(
+    () => weeks.slice(weekStartFilter, weekEndFilter + 1),
+    [weeks, weekStartFilter, weekEndFilter]
+  );
 
-  // Labels para os seletores de semana
-  const getWeekLabel = (index: number) => {
-    const week = weeks[index];
-    if (!week) return `Semana ${index + 1}`;
-    return `Semana ${String(index + 1).padStart(2, '0')} (${week.formattedRange})`;
-  };
+  // Labels para os seletores - memoizado
+  const weekLabels = useMemo(() => {
+    return weeks.map((week, idx) => ({
+      value: String(idx),
+      label: `Semana ${String(idx + 1).padStart(2, '0')} (${week.formattedRange})`,
+    }));
+  }, [weeks]);
+
+  // Pré-calcular tarefas por semana filtrada
+  const weekTasksMap = useMemo(() => {
+    const map = new Map<string, PmpAtividade[]>();
+    filteredWeeks.forEach((week) => {
+      map.set(week.id, getTasksForWeek(week.id));
+    });
+    return map;
+  }, [filteredWeeks, getTasksForWeek]);
 
   return (
     <div className="w-full border border-border rounded-xl bg-card shadow-sm flex-shrink-0 overflow-hidden flex flex-col h-[600px]">
@@ -189,7 +269,6 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           <span className="font-medium">Filtrar:</span>
         </div>
         
-        {/* Filtro de Responsável */}
         <Select value={responsavelFilter} onValueChange={onResponsavelFilterChange}>
           <SelectTrigger className="w-[180px] h-8 text-sm">
             <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
@@ -205,10 +284,8 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           </SelectContent>
         </Select>
 
-        {/* Separador */}
         <div className="h-6 w-px bg-border" />
 
-        {/* Filtro de Semanas */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
           <span className="font-medium">Semanas:</span>
@@ -222,9 +299,9 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
             <SelectValue placeholder="Início" />
           </SelectTrigger>
           <SelectContent>
-            {weeks.map((_, idx) => (
-              <SelectItem key={idx} value={String(idx)} disabled={idx > weekEndFilter}>
-                {getWeekLabel(idx)}
+            {weekLabels.map(({ value, label }, idx) => (
+              <SelectItem key={value} value={value} disabled={idx > weekEndFilter}>
+                {label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -240,9 +317,9 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
             <SelectValue placeholder="Fim" />
           </SelectTrigger>
           <SelectContent>
-            {weeks.map((_, idx) => (
-              <SelectItem key={idx} value={String(idx)} disabled={idx < weekStartFilter}>
-                {getWeekLabel(idx)}
+            {weekLabels.map(({ value, label }, idx) => (
+              <SelectItem key={value} value={value} disabled={idx < weekStartFilter}>
+                {label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -263,10 +340,8 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           </Button>
         )}
 
-        {/* Separador */}
         <div className="h-6 w-px bg-border ml-auto" />
 
-        {/* Botão de Exportar PDF */}
         {obraId && obraNome && (
           <PmpExportDialog
             obraId={obraId}
@@ -286,78 +361,40 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
         onDragEnd={handleDragEnd}
       >
         <div className="flex-1 overflow-hidden flex flex-col bg-muted/30">
-          {/* Wrapper com scroll horizontal */}
-          <ScrollArea className="flex-1 w-full">
+          {/* Wrapper com scroll nativo (melhor performance que ScrollArea) */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+            style={{ 
+              // CSS para scroll suave com GPU acceleration
+              willChange: 'scroll-position',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
             <div className="min-w-max">
               {/* Headers fixos das semanas */}
               <div className="flex p-4 pb-2 gap-4 sticky top-0 z-20 bg-muted/95 backdrop-blur-sm border-b border-border">
                 {filteredWeeks.map((week, idx) => (
-                  <div
-                    key={`header-${week.id}`}
-                    className="flex-shrink-0 w-[280px]"
-                  >
-                    <div className="bg-card border border-border rounded-lg p-3 shadow-sm">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-foreground text-sm uppercase">
-                          {week.label}
-                        </span>
-                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                          {week.year}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground font-medium capitalize">
-                        {week.formattedRange}
-                      </div>
-                    </div>
-                  </div>
+                  <WeekHeader key={week.id} week={week} index={idx} />
                 ))}
               </div>
 
               {/* Corpo das colunas com cards */}
               <div className="flex px-4 pb-4 pt-2 gap-4">
-                {filteredWeeks.map((week) => {
-                  const weekTasks = getTasksForWeek(week.id);
-                  return (
-                    <div
-                      key={week.id}
-                      className="flex-shrink-0 w-[280px] flex flex-col"
-                    >
-                      {/* Corpo da Coluna */}
-                      <div className="bg-muted/50 rounded-lg border border-dashed border-border flex flex-col min-h-[380px] relative">
-                        <div className="p-2 pb-14 space-y-2">
-                          <PmpKanbanColumn weekId={week.id} tasks={weekTasks}>
-                            {weekTasks.map((atividade) => (
-                              <PmpKanbanCard
-                                key={`${atividade.id}::${week.id}`}
-                                weekId={week.id}
-                                atividade={atividade}
-                                onDelete={onDelete}
-                                onClick={onOpenEdit}
-                                onToggleCheck={onToggleCheck}
-                              />
-                            ))}
-                          </PmpKanbanColumn>
-                        </div>
-
-                        {/* Botão Adicionar */}
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-muted via-muted to-transparent pt-4">
-                          <Button
-                            variant="ghost"
-                            className="w-full bg-card hover:bg-card/80 shadow-sm border border-border text-muted-foreground text-xs h-8"
-                            onClick={() => onOpenAdd(week.id)}
-                          >
-                            <Plus className="h-3 w-3 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filteredWeeks.map((week) => (
+                  <WeekColumn
+                    key={week.id}
+                    week={week}
+                    tasks={weekTasksMap.get(week.id) || []}
+                    onOpenAdd={onOpenAdd}
+                    onOpenEdit={onOpenEdit}
+                    onDelete={onDelete}
+                    onToggleCheck={onToggleCheck}
+                  />
+                ))}
               </div>
             </div>
-            <ScrollBar orientation="horizontal" className="h-3" />
-            <ScrollBar orientation="vertical" />
-          </ScrollArea>
+          </div>
         </div>
 
         <DragOverlay dropAnimation={dropAnimation}>
