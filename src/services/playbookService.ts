@@ -36,6 +36,15 @@ export const playbookService = {
     return data as unknown as PlaybookItem[];
   },
 
+  // Salvar apenas configuração (NÃO MEXE nos itens)
+  async saveConfig(obraId: string, config: PlaybookConfig) {
+    const { error: configError } = await supabase
+      .from("playbook_config")
+      .upsert({ ...config, obra_id: obraId }, { onConflict: "obra_id" });
+
+    if (configError) throw configError;
+  },
+
   // Salvar em lote (Importação) - PRESERVA destinos existentes
   async savePlaybook(obraId: string, config: PlaybookConfig, items: Partial<PlaybookItem>[]) {
     // 1. Configuração
