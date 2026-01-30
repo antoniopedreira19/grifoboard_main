@@ -143,16 +143,13 @@ const Playbook = () => {
     if (!obraId) return;
     setIsSavingConfig(true);
     try {
-      await playbookService.savePlaybook(
-        obraId,
-        {
-          obra_id: obraId,
-          coeficiente_1: coeficiente1,
-          coeficiente_2: coeficiente2,
-          coeficiente_selecionado: coeficienteSelecionado,
-        },
-        rawItems,
-      );
+      // Usar saveConfig que NÃO MEXE nos itens - preserva destinos
+      await playbookService.saveConfig(obraId, {
+        obra_id: obraId,
+        coeficiente_1: coeficiente1,
+        coeficiente_2: coeficiente2,
+        coeficiente_selecionado: coeficienteSelecionado,
+      });
       toast({ title: "Sucesso", description: "Coeficientes atualizados." });
     } catch (error) {
       console.error(error);
@@ -160,7 +157,7 @@ const Playbook = () => {
     } finally {
       setIsSavingConfig(false);
     }
-  }, [obraId, coeficiente1, coeficiente2, coeficienteSelecionado, rawItems, toast]);
+  }, [obraId, coeficiente1, coeficiente2, coeficienteSelecionado, toast]);
 
   useEffect(() => {
     fetchPlaybook();
