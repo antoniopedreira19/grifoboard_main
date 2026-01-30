@@ -337,13 +337,14 @@ function generateHTML(
       box-sizing: border-box;
     }
     
-    body {
+    html, body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       font-size: 12pt;
       line-height: 1.5;
       color: #1a1a1a;
       background: white;
       padding: 20px;
+      margin: 0;
     }
     
     .header {
@@ -352,7 +353,8 @@ function generateHTML(
       justify-content: space-between;
       border-bottom: 3px solid #C7A347;
       padding-bottom: 20px;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
+      page-break-after: avoid;
     }
     
     .header-left {
@@ -395,8 +397,13 @@ function generateHTML(
     }
     
     .day-container {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
+      page-break-before: auto;
       page-break-inside: avoid;
+    }
+    
+    .day-container:first-child {
+      page-break-before: avoid;
     }
     
     .day-title {
@@ -405,7 +412,8 @@ function generateHTML(
       background: #f8f8f8;
       padding: 12px 16px;
       border-left: 4px solid #C7A347;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      page-break-after: avoid;
     }
     
     .section {
@@ -505,12 +513,22 @@ function generateHTML(
     }
     
     @media print {
-      body {
+      html, body {
         padding: 0;
+        margin: 0;
+      }
+      
+      .header {
+        page-break-after: avoid;
       }
       
       .day-container {
+        page-break-before: auto;
         page-break-inside: avoid;
+      }
+      
+      .day-container:first-child {
+        page-break-before: avoid;
       }
       
       .photos-grid {
