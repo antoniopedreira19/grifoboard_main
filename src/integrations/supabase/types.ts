@@ -210,18 +210,21 @@ export type Database = {
         Row: {
           content: string | null
           embedding: string | null
+          fts: unknown
           id: number
           metadata: Json | null
         }
         Insert: {
           content?: string | null
           embedding?: string | null
+          fts?: unknown
           id?: number
           metadata?: Json | null
         }
         Update: {
           content?: string | null
           embedding?: string | null
+          fts?: unknown
           id?: number
           metadata?: Json | null
         }
@@ -1676,6 +1679,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      hybrid_search: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+          query_text: string
+        }
+        Returns: {
+          content: string
+          id: number
+          metadata: Json
+          similarity: number
+        }[]
+      }
+      immutable_unaccent: { Args: { "": string }; Returns: string }
       is_company_admin: { Args: never; Returns: boolean }
       is_master_admin: { Args: never; Returns: boolean }
       link_user_to_form: {
@@ -1696,6 +1714,9 @@ export type Database = {
           similarity: number
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       user_role: "admin" | "member" | "master_admin" | "parceiro"
