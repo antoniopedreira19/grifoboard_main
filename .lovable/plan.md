@@ -1,141 +1,141 @@
 
-# Plano: Exportar PDF do Diário de Obra
+
+# Plano de Otimizacao - GrifoAI Performance
 
 ## Resumo
 
-Adicionar funcionalidade de exportação em PDF para o Diário de Obra, permitindo exportar por dia individual ou por semana, incluindo todos os dados (clima, mão de obra, equipamentos, atividades, ocorrências, observações) e as fotos associadas.
-
-## O que será criado
-
-### 1. Nova Edge Function: `export-diario-pdf`
-
-Uma função serverless que:
-- Recebe os parâmetros de exportação (obra, data ou intervalo de datas)
-- Busca os diários no período especificado
-- Busca as fotos associadas a cada dia e gera URLs assinadas
-- Gera um HTML formatado para impressão/PDF com todas as informações
-
-### 2. Componente de Exportação: `DiarioExportDialog`
-
-Um modal de exportação com opções:
-- **Por Dia**: Exporta apenas o diário do dia selecionado
-- **Por Semana**: Exporta todos os diários da semana atual (segunda a domingo), separados por dia
-
-### 3. Integração na Página
-
-Adicionar botão de "Exportar PDF" no header da página de Diário de Obra.
+O objetivo e melhorar a **percepcao de velocidade** da GrifoAI atraves de otimizacoes no frontend e na Edge Function. A maior parte do tempo de resposta (~95%) e do n8n/IA, mas podemos reduzir significativamente o tempo percebido pelo usuario.
 
 ---
 
-## Sobre as Imagens
+## O Que Sera Implementado
 
-**Sim, é possível incluir as imagens!** As fotos do diário estão armazenadas no Supabase Storage (bucket `diario-obra`). A edge function irá:
+### 1. UI Otimista e Salvamento em Background
 
-1. Buscar as fotos de cada dia via tabela `diario_fotos`
-2. Gerar URLs assinadas para cada foto
-3. Incluir as imagens diretamente no HTML usando as URLs assinadas
-4. As imagens aparecerão em uma galeria organizada por dia
+**Antes:** O usuario envia a mensagem -> Salva no banco -> Espera a IA -> Salva resposta -> Atualiza UI
+**Depois:** O usuario envia a mensagem -> UI atualiza instantaneamente -> Operacoes em paralelo
 
-**Observação**: Para imagens muito grandes, o PDF pode ficar pesado. O sistema redimensionará as imagens via CSS para otimizar o tamanho do documento.
+**Beneficio:** A mensagem do usuario aparece imediatamente, sem esperar o banco de dados.
+
+### 2. Indicador de Digitacao Animado
+
+Substituir o simples "Consultando..." por uma animacao de "typing indicator" (tres pontinhos pulsando) que da feedback visual constante ao usuario.
+
+### 3. Mensagens de Status Dinamicas
+
+Durante a espera, exibir mensagens rotativas como:
+- "Analisando sua pergunta..."
+- "Consultando base de conhecimento..."
+- "Preparando resposta..."
+
+Isso reduz a percepcao de tempo de espera.
+
+### 4. Timeout com Feedback
+
+Adicionar um timeout de 60 segundos com mensagem amigavel caso o n8n demore demais, evitando que o usuario fique esperando indefinidamente.
+
+### 5. Memoizacao de Componentes
+
+Otimizar re-renders desnecessarios usando `React.memo` nos componentes de mensagem.
 
 ---
 
-## Detalhes Técnicos
+## Detalhes Tecnicos
 
-### Edge Function (`supabase/functions/export-diario-pdf/index.ts`)
+### Arquivo: `src/pages/GrifoAI.tsx`
 
 ```text
-Estrutura do payload:
-{
-  obraId: string,
-  obraNome: string,
-  exportType: "day" | "week",
-  date: string (ISO - data selecionada),
-  includePhotos: boolean
-}
+Mudancas:
+1. Refatorar handleSend para UI otimista:
+   - Atualizar estado local ANTES de chamar API
+   - Salvar mensagem do usuario em background (sem await)
+   - Chamar edge function em paralelo
+
+2. Novo componente TypingIndicator:
+   - Animacao CSS de 3 dots pulsando
+   - Mensagens de status rotativas
+
+3. Adicionar AbortController para timeout:
+   - Cancelar requisicao apos 60s
+   - Exibir mensagem de erro amigavel
+
+4. Memoizar MessageBubble component:
+   - Evitar re-render de mensagens antigas
 ```
 
-**Fluxo da função:**
-1. Validar autenticação
-2. Determinar período (dia único ou semana)
-3. Buscar diários no período (`diarios_obra`)
-4. Para cada diário, buscar fotos (`diario_fotos`)
-5. Gerar URLs assinadas para cada foto
-6. Montar HTML com design Grifo (igual aos outros PDFs)
-7. Retornar HTML para impressão
-
-### Layout do PDF
+### Arquivo: `src/components/grifo-ai/TypingIndicator.tsx` (novo)
 
 ```text
-+----------------------------------+
-|  [Logo Grifo]    Diário de Obra  |
-|  Obra: Nome da Obra              |
-|  Período: XX/XX/XXXX             |
-+----------------------------------+
-
-📅 Segunda-feira, 27 de Janeiro de 2025
-+----------------------------------+
-| Clima                            |
-| ☀️ Manhã: Ensolarado             |
-| 🌤️ Tarde: Nublado                |
-| 🌙 Noite: Chuvoso                |
-+----------------------------------+
-| Mão de Obra: Descrição...        |
-| Equipamentos: Descrição...       |
-+----------------------------------+
-| Atividades Realizadas:           |
-| - Descrição detalhada...         |
-+----------------------------------+
-| Ocorrências:                     |
-| - Descrição...                   |
-+----------------------------------+
-| Observações:                     |
-| - Descrição...                   |
-+----------------------------------+
-| Fotos do Dia:                    |
-| [img] [img] [img]                |
-| Legenda da foto...               |
-+----------------------------------+
-
-(Repete para cada dia da semana)
+Componente dedicado para:
+- Animacao de typing dots
+- Rotacao de mensagens de status
+- Estilo consistente com o chat
 ```
 
-### Componente React (`src/components/diario/DiarioExportDialog.tsx`)
+### Arquivo: `src/index.css`
 
-- Modal com opções de exportação
-- RadioGroup: "Dia Atual" ou "Semana Atual"
-- Checkbox: "Incluir fotos" (marcado por padrão)
-- Botão de exportar que chama a edge function
+```text
+Adicionar:
+- Keyframes para animacao de typing dots
+- Classes utilitarias para o indicador
+```
 
-### Modificações na Página
+### Arquivo: `supabase/functions/grifo-ai/index.ts`
 
-**Arquivo**: `src/pages/DiarioObra.tsx`
-- Importar e renderizar `DiarioExportDialog` no header
-- Passar props: `obraId`, `obraNome`, `date` (data atual selecionada)
-
----
-
-## Arquivos a Criar/Modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `supabase/functions/export-diario-pdf/index.ts` | Criar |
-| `supabase/config.toml` | Adicionar nova função |
-| `src/components/diario/DiarioExportDialog.tsx` | Criar |
-| `src/pages/DiarioObra.tsx` | Modificar (adicionar botão) |
+```text
+Melhorias:
+- Adicionar timeout interno de 55s
+- Logging mais detalhado para debug
+- Melhor tratamento de erros
+```
 
 ---
 
-## Fluxo do Usuário
+## Fluxo Otimizado
 
-1. Usuário acessa Diário de Obra
-2. Seleciona um dia no calendário
-3. Clica no botão "Exportar PDF"
-4. Modal abre com opções:
-   - Exportar apenas o dia selecionado
-   - Exportar semana inteira (segunda a domingo)
-   - Incluir fotos (checkbox)
-5. Clica em "Exportar"
-6. Sistema busca dados e gera HTML
-7. Abre janela de impressão do navegador
-8. Usuário pode salvar como PDF ou imprimir
+```text
+Usuario digita mensagem
+        |
+        v
++------------------+
+| UI Atualiza      | <-- Instantaneo (0ms)
+| (msg do usuario) |
++------------------+
+        |
+   [Em paralelo]
+        |
+   +----+----+
+   |         |
+   v         v
+Salva DB   Chama n8n
+(background) (aguarda)
+   |         |
+   +----+----+
+        |
+        v
++------------------+
+| Exibe resposta   |
+| + Salva DB       |
++------------------+
+```
+
+---
+
+## Resultado Esperado
+
+| Metrica | Antes | Depois |
+|---------|-------|--------|
+| Tempo para msg aparecer | ~500ms | ~50ms |
+| Feedback visual | Estatico | Animado |
+| Percepcao de espera | Longa | Reduzida |
+| Tratamento de timeout | Nenhum | 60s + mensagem |
+
+---
+
+## Arquivos a Modificar
+
+1. `src/pages/GrifoAI.tsx` - Logica principal e UI otimista
+2. `src/components/grifo-ai/TypingIndicator.tsx` - Novo componente
+3. `src/index.css` - Animacoes CSS
+4. `supabase/functions/grifo-ai/index.ts` - Timeout e logging
+
