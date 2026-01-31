@@ -1,14 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
+import { Send, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import grifoLogo from "@/assets/grifo-logo.png";
+import MessageBubble from "@/components/grifo-ai/MessageBubble";
+import TypingIndicator from "@/components/grifo-ai/TypingIndicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,17 +22,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// @ts-ignore
-import ReactMarkdown from "react-markdown";
-// @ts-ignore
-import remarkGfm from "remark-gfm";
-
 interface Message {
   id?: string;
   role: "user" | "assistant";
   content: string;
   created_at?: string;
 }
+
+const TIMEOUT_MS = 60000; // 60 seconds
 
 const GrifoAI = () => {
   const { userSession } = useAuth();
@@ -41,8 +39,9 @@ const GrifoAI = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // 1. Carregar Histórico ao Iniciar
+  // Load history on mount
   useEffect(() => {
     const loadHistory = async () => {
       if (!userSession?.user?.id) return;
@@ -82,65 +81,104 @@ const GrifoAI = () => {
     }
   }, [messages, loading]);
 
-  const handleSend = async () => {
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Save message to DB in background (fire-and-forget)
+  const saveMessageBackground = useCallback((userId: string, role: string, content: string) => {
+    supabase
+      .from("grifo_chat_messages" as any)
+      .insert({ user_id: userId, role, content })
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar mensagem:", error);
+      });
+  }, []);
+
+  const handleSend = useCallback(async () => {
     if (!input.trim() || loading || !userSession?.user?.id) return;
 
     const userMessageContent = input.trim();
+    const userId = userSession.user.id;
+    
+    // Clear input immediately
     setInput("");
-    setLoading(true);
-
+    
+    // OPTIMISTIC UI: Add user message instantly
     const tempUserMsg: Message = { role: "user", content: userMessageContent };
     setMessages((prev) => [...prev, tempUserMsg]);
+    
+    // Start loading
+    setLoading(true);
+
+    // Save user message in background (no await)
+    saveMessageBackground(userId, "user", userMessageContent);
+
+    // Create abort controller for timeout
+    abortControllerRef.current = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortControllerRef.current?.abort();
+    }, TIMEOUT_MS);
 
     try {
-      await supabase.from("grifo_chat_messages" as any).insert({
-        user_id: userSession.user.id,
-        role: "user",
-        content: userMessageContent,
-      });
-
       const { data, error } = await supabase.functions.invoke("grifo-ai", {
         body: {
           query: userMessageContent,
-          user_id: userSession.user.id,
-          chat_id: userSession.user.id,
+          user_id: userId,
+          chat_id: userId,
         },
       });
+
+      clearTimeout(timeoutId);
 
       let aiResponse = "";
 
       if (error) {
         console.warn("Edge Function erro:", error);
         aiResponse = "⚠️ Erro de conexão com o GrifoMind. Verifique se o n8n está ativo.";
+      } else if (data?.error) {
+        console.error("Erro Edge:", data.error);
+        aiResponse = "Ocorreu um erro no processamento da sua pergunta. Tente novamente.";
       } else {
-        if (data?.error) {
-          console.error("Erro Edge:", data.error);
-          aiResponse = "Ocorreu um erro no processamento da sua pergunta. Tente novamente.";
-        } else {
-          aiResponse = data?.answer || "Não encontrei essa informação.";
-        }
+        aiResponse = data?.answer || "Não encontrei essa informação.";
       }
 
-      await supabase.from("grifo_chat_messages" as any).insert({
-        user_id: userSession.user.id,
-        role: "assistant",
-        content: aiResponse,
-      });
+      // Save AI response in background
+      saveMessageBackground(userId, "assistant", aiResponse);
 
+      // Update UI with AI response
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      let errorMessage = "Falha na comunicação.";
+      
+      if (error.name === "AbortError" || error.message?.includes("abort")) {
+        errorMessage = "⏱️ A consulta demorou muito. O servidor pode estar sobrecarregado. Tente novamente em alguns instantes.";
+      }
+
       console.error("Erro fluxo:", error);
+      
+      // Add error message to chat
+      setMessages((prev) => [...prev, { role: "assistant", content: errorMessage }]);
+      
       toast({
         title: "Erro",
-        description: "Falha na comunicação.",
+        description: "Falha na comunicação com o GrifoAI.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
-  };
+  }, [input, loading, userSession, saveMessageBackground, toast]);
 
-  const handleClearHistory = async () => {
+  const handleClearHistory = useCallback(async () => {
     if (!userSession?.user?.id) return;
     try {
       const { error } = await supabase
@@ -161,14 +199,16 @@ const GrifoAI = () => {
       console.error(error);
       toast({ title: "Erro ao limpar", variant: "destructive" });
     }
-  };
+  }, [userSession, toast]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
+
+  const userAvatarUrl = userSession?.user?.user_metadata?.avatar_url;
 
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] max-w-5xl mx-auto gap-4">
@@ -214,91 +254,15 @@ const GrifoAI = () => {
           ) : (
             <div className="space-y-6">
               {messages.map((msg, index) => (
-                <div key={index} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {/* Avatar do Robô (Esquerda) */}
-                  {msg.role === "assistant" && (
-                    <Avatar className="h-8 w-8 border border-slate-200 mt-1 flex-shrink-0">
-                      <AvatarImage src={grifoLogo} alt="Grifo AI" />
-                      <AvatarFallback className="bg-[#112131] text-[#C7A347]">
-                        <Bot className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-
-                  {/* Balão de Mensagem */}
-                  {msg.role === "assistant" ? (
-                    // --- ASSISTENTE (Markdown Renderizado) ---
-                    <div className="max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl rounded-tl-none bg-white text-slate-700 border border-slate-100 shadow-sm text-sm leading-relaxed overflow-hidden">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        className="prose prose-sm prose-slate max-w-none break-words"
-                        components={{
-                          strong: ({ node, ...props }) => <span className="font-bold text-slate-900" {...props} />,
-                          ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                          ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
-                          li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                          p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                          a: ({ node, ...props }) => (
-                            <a
-                              className="text-blue-600 hover:underline font-medium"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              {...props}
-                            />
-                          ),
-                          h1: ({ node, ...props }) => (
-                            <h1 className="text-lg font-bold text-[#112131] mt-4 mb-2" {...props} />
-                          ),
-                          h2: ({ node, ...props }) => (
-                            <h2 className="text-base font-bold text-[#112131] mt-3 mb-2" {...props} />
-                          ),
-                          h3: ({ node, ...props }) => (
-                            <h3 className="text-sm font-bold text-[#112131] mt-2 mb-1" {...props} />
-                          ),
-                          code: ({ node, ...props }) => (
-                            <code
-                              className="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono text-red-500"
-                              {...props}
-                            />
-                          ),
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    // --- USUÁRIO (Texto Simples) ---
-                    <div className="max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl rounded-tr-none bg-[#112131] text-white shadow-sm text-sm leading-relaxed whitespace-pre-wrap">
-                      {msg.content}
-                    </div>
-                  )}
-
-                  {/* Avatar do Usuário (Direita) */}
-                  {msg.role === "user" && (
-                    <Avatar className="h-8 w-8 border border-slate-200 mt-1 flex-shrink-0">
-                      <AvatarImage src={userSession?.user?.user_metadata?.avatar_url} />
-                      <AvatarFallback className="bg-slate-200 text-slate-600">
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
+                <MessageBubble 
+                  key={msg.id || index} 
+                  message={msg} 
+                  userAvatarUrl={userAvatarUrl} 
+                />
               ))}
 
-              {loading && (
-                <div className="flex gap-3 justify-start animate-pulse">
-                  <Avatar className="h-8 w-8 border border-slate-200 mt-1">
-                    <AvatarImage src={grifoLogo} alt="Grifo AI" />
-                    <AvatarFallback className="bg-[#112131] text-[#C7A347]">
-                      <Bot className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex items-center gap-2 text-slate-500 text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#C7A347]" />
-                    <span className="text-xs">Consultando...</span>
-                  </div>
-                </div>
-              )}
+              {loading && <TypingIndicator />}
+              
               <div ref={scrollRef} />
             </div>
           )}
