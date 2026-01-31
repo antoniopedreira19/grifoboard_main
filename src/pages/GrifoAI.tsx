@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Bot, User, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import grifoLogo from "@/assets/grifo-logo.png";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,9 +175,7 @@ const GrifoAI = () => {
       {/* Header */}
       <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#112131] rounded-lg">
-            <Sparkles className="h-6 w-6 text-[#C7A347]" />
-          </div>
+          <img src={grifoLogo} alt="Grifo Logo" className="h-10 w-auto" />
           <div>
             <h1 className="text-xl font-bold text-[#112131]">GrifoAI</h1>
             <p className="text-xs text-slate-500">Histórico salvo automaticamente</p>
