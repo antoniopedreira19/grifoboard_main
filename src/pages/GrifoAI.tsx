@@ -218,6 +218,7 @@ const GrifoAI = () => {
                   {/* Avatar do Robô (Esquerda) */}
                   {msg.role === "assistant" && (
                     <Avatar className="h-8 w-8 border border-slate-200 mt-1 flex-shrink-0">
+                      <AvatarImage src={grifoLogo} alt="Grifo AI" />
                       <AvatarFallback className="bg-[#112131] text-[#C7A347]">
                         <Bot className="h-4 w-4" />
                       </AvatarFallback>
@@ -287,6 +288,7 @@ const GrifoAI = () => {
               {loading && (
                 <div className="flex gap-3 justify-start animate-pulse">
                   <Avatar className="h-8 w-8 border border-slate-200 mt-1">
+                    <AvatarImage src={grifoLogo} alt="Grifo AI" />
                     <AvatarFallback className="bg-[#112131] text-[#C7A347]">
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
