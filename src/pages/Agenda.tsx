@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { agendaService } from "@/services/agendaService";
+import { agendaService, RecurrenceConfig } from "@/services/agendaService";
 import { AgendaEvent } from "@/types/agenda";
 import {
   format,
@@ -16,7 +16,8 @@ import {
   endOfWeek,
   isBefore,
   endOfDay,
-  addHours, // Importado addHours
+  addHours,
+  getDay,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -45,6 +46,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EventDetailModal } from "@/components/agenda/EventDetailModal";
 import { EventEditModal } from "@/components/agenda/EventEditModal";
+import { RecurrenceSelector } from "@/components/agenda/RecurrenceSelector";
+import { CopyEventModal } from "@/components/agenda/CopyEventModal";
 
 export default function Agenda() {
   const { userSession } = useAuth();
@@ -59,6 +62,7 @@ export default function Agenda() {
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
 
   // Form States
   const [newEvent, setNewEvent] = useState({
@@ -68,6 +72,14 @@ export default function Agenda() {
     category: "geral",
     participants: "",
     description: "",
+  });
+
+  // Recurrence State
+  const [recurrence, setRecurrence] = useState<RecurrenceConfig>({
+    enabled: false,
+    frequency: "weekly",
+    weekDays: [getDay(new Date())], // Dia atual por padrão
+    endDate: "",
   });
 
   const obraId = userSession?.obraAtiva?.id;
@@ -97,11 +109,23 @@ export default function Agenda() {
       return;
     }
 
+    // Validar recorrência
+    if (recurrence.enabled) {
+      if (!recurrence.endDate) {
+        toast({ title: "Erro", description: "Selecione a data de término da recorrência.", variant: "destructive" });
+        return;
+      }
+      if (recurrence.frequency === "weekly" && recurrence.weekDays.length === 0) {
+        toast({ title: "Erro", description: "Selecione pelo menos um dia da semana.", variant: "destructive" });
+        return;
+      }
+    }
+
     try {
       const startDateTime = new Date(`${newEvent.date}T${newEvent.time}:00`);
       const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
-      await agendaService.criarEvento({
+      const eventoBase = {
         obra_id: obraId,
         title: newEvent.title,
         description: newEvent.description,
@@ -112,15 +136,47 @@ export default function Agenda() {
           .split(",")
           .map((p) => p.trim())
           .filter(Boolean),
-      });
+      };
 
-      toast({ title: "Sucesso", description: "Evento agendado com sucesso." });
+      const eventosCreated = await agendaService.criarEventosRecorrentes(eventoBase, recurrence);
+      
+      const message = recurrence.enabled 
+        ? `${eventosCreated.length} eventos criados com sucesso!`
+        : "Evento agendado com sucesso.";
+      
+      toast({ title: "Sucesso", description: message });
       setIsModalOpen(false);
       fetchEvents();
+      
+      // Reset form
       setNewEvent({ ...newEvent, title: "", description: "", participants: "" });
-    } catch (error) {
-      toast({ title: "Erro", description: "Falha ao criar evento.", variant: "destructive" });
+      setRecurrence({
+        enabled: false,
+        frequency: "weekly",
+        weekDays: [getDay(new Date())],
+        endDate: "",
+      });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Falha ao criar evento.", variant: "destructive" });
     }
+  };
+
+  const handleCopyEvent = async (targetDate: Date) => {
+    if (!selectedEvent) return;
+
+    try {
+      await agendaService.copiarEvento(selectedEvent, targetDate);
+      toast({ description: "Evento copiado com sucesso!" });
+      fetchEvents();
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao copiar evento.", variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const handleOpenCopy = (event: AgendaEvent) => {
+    setSelectedEvent(event);
+    setIsCopyOpen(true);
   };
 
   const handleToggleComplete = async (event: AgendaEvent, e: React.MouseEvent) => {
@@ -289,9 +345,18 @@ export default function Agenda() {
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                   />
                 </div>
+
+                {/* Seção de Recorrência */}
+                <RecurrenceSelector
+                  config={recurrence}
+                  onChange={setRecurrence}
+                  startDate={newEvent.date}
+                />
               </div>
               <DialogFooter>
-                <Button onClick={handleCreateEvent}>Confirmar Agendamento</Button>
+                <Button onClick={handleCreateEvent}>
+                  {recurrence.enabled ? "Criar Eventos Recorrentes" : "Confirmar Agendamento"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -540,6 +605,7 @@ export default function Agenda() {
         onOpenChange={setIsDetailOpen}
         onEdit={handleOpenEdit}
         onDelete={handleDeleteEvent}
+        onCopy={handleOpenCopy}
         onUpdate={() => {
           fetchEvents();
           // Atualiza o selectedEvent com dados frescos
@@ -557,6 +623,13 @@ export default function Agenda() {
         onOpenChange={setIsEditOpen}
         onUpdate={fetchEvents}
         obraId={obraId || ""}
+      />
+
+      <CopyEventModal
+        event={selectedEvent}
+        open={isCopyOpen}
+        onOpenChange={setIsCopyOpen}
+        onCopy={handleCopyEvent}
       />
     </div>
   );

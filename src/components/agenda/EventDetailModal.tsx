@@ -25,6 +25,7 @@ import {
   Trash2,
   ExternalLink,
   X,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ interface EventDetailModalProps {
   onEdit: (event: AgendaEvent) => void;
   onDelete: (eventId: string) => void;
   onUpdate: () => void;
+  onCopy: (event: AgendaEvent) => void;
   obraId: string;
 }
 
@@ -45,6 +47,7 @@ export function EventDetailModal({
   onEdit,
   onDelete,
   onUpdate,
+  onCopy,
   obraId,
 }: EventDetailModalProps) {
   const { toast } = useToast();
@@ -262,17 +265,31 @@ export function EventDetailModal({
             <Trash2 className="w-4 h-4 mr-2" />
             Excluir
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              onEdit(event);
-              onOpenChange(false);
-            }}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Editar
-          </Button>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                onCopy(event);
+                onOpenChange(false);
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copiar
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                onEdit(event);
+                onOpenChange(false);
+              }}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Editar
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
