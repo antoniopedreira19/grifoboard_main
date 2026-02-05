@@ -113,17 +113,8 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({ tasks, onFiltersChange, selec
     onFiltersChange(processedTasks);
   }, [processedTasks, onFiltersChange]);
 
-  // Reset filters when selectedCause changes
-  useEffect(() => {
-    setSearchTerm("");
-    setFilterSector("all");
-    setFilterDiscipline("all");
-    setFilterResponsible("all");
-    setFilterTeam("all");
-    setFilterExecutor("all");
-    setFilterStatus("all");
-    // Don't reset sortBy when cause changes
-  }, [selectedCause]);
+  // Removido: useEffect que resetava filtros quando selectedCause mudava
+  // Os filtros agora só são limpos quando o usuário clica explicitamente em "Limpar Filtros"
 
   const clearAllFilters = () => {
     setFilterSector("all");

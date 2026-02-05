@@ -55,9 +55,8 @@ const TaskList: React.FC<TaskListProps> = ({
     setFilteredTasks(filtered);
   }, []);
 
-  useEffect(() => {
-    setFilteredTasks(tasksAfterCauseFilter);
-  }, [tasksAfterCauseFilter]);
+  // O TaskFilters já recalcula e chama onFiltersChange quando tasks muda
+  // Não precisamos mais deste useEffect que sobrescrevia os filtros ativos
 
   return (
     <div className="w-full space-y-6">
