@@ -41,6 +41,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdherenceRanking } from "@/components/metas/AdherenceRanking";
 
 // --- TIPOS ---
 interface MetaAnual {
@@ -82,7 +83,7 @@ const GestaoMetas = () => {
 
   // Filtros
   const [anoSelecionado, setAnoSelecionado] = useState("2026");
-  const [viewMode, setViewMode] = useState<"squad" | "obra">("squad");
+  const [viewMode, setViewMode] = useState<"squad" | "obra" | "aderencia">("squad");
 
   // Modais
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -179,6 +180,79 @@ const GestaoMetas = () => {
       } catch (e) {
         return [];
       }
+    },
+    enabled: !!dashboardData?.empresa_id,
+  });
+
+  // --- QUERY ADERÊNCIA AO SISTEMA ---
+  const { data: adherenceData, isLoading: isLoadingAdherence } = useQuery({
+    queryKey: ["adherenceData", dashboardData?.empresa_id],
+    queryFn: async () => {
+      if (!dashboardData?.empresa_id) return [];
+
+      // 1. Buscar usuários da empresa com perfis de gamificação
+      const { data: usersWithProfiles, error: usersError } = await supabase
+        .from("usuarios")
+        .select(`
+          id,
+          nome,
+          gamification_profiles (
+            xp_total,
+            level_current
+          )
+        `)
+        .eq("empresa_id", dashboardData.empresa_id)
+        .order("nome");
+
+      if (usersError) {
+        console.error("Erro ao buscar usuários:", usersError);
+        return [];
+      }
+
+      // 2. Para cada usuário, buscar contagem de logs por action_type
+      const userIds = (usersWithProfiles || []).map((u) => u.id);
+      
+      const { data: logsData, error: logsError } = await supabase
+        .from("gamification_logs")
+        .select("user_id, action_type")
+        .in("user_id", userIds);
+
+      if (logsError) {
+        console.error("Erro ao buscar logs:", logsError);
+      }
+
+      // Agregar logs por usuário e tipo
+      const logsMap: Record<string, Record<string, number>> = {};
+      (logsData || []).forEach((log) => {
+        if (!logsMap[log.user_id]) {
+          logsMap[log.user_id] = {};
+        }
+        logsMap[log.user_id][log.action_type] = (logsMap[log.user_id][log.action_type] || 0) + 1;
+      });
+
+      // Mapear para estrutura de aderência
+      const result = (usersWithProfiles || []).map((user) => {
+        const profile = Array.isArray(user.gamification_profiles)
+          ? user.gamification_profiles[0]
+          : user.gamification_profiles;
+        const userLogs = logsMap[user.id] || {};
+
+        return {
+          id: user.id,
+          nome: user.nome || "Usuário",
+          xp_total: profile?.xp_total || 0,
+          level: profile?.level_current || 1,
+          features: {
+            PCP: userLogs["TAREFA_CONCLUIDA"] || 0,
+            DIARIO: userLogs["DIARIO_CRIADO"] || 0,
+            PMP: (userLogs["PMP_ATIVIDADE_CONCLUIDA"] || 0) + (userLogs["PMP_RESTRICAO_CONCLUIDA"] || 0),
+            PLAYBOOK: (userLogs["CONTRATACAO_FAST"] || 0) + (userLogs["ECONOMIA_PLAYBOOK"] || 0),
+          },
+        };
+      });
+
+      // Ordenar por XP decrescente
+      return result.sort((a, b) => b.xp_total - a.xp_total);
     },
     enabled: !!dashboardData?.empresa_id,
   });
@@ -660,6 +734,12 @@ const GestaoMetas = () => {
               >
                 <LayoutGrid className="h-3 w-3" /> Obras
               </button>
+              <button
+                onClick={() => setViewMode("aderencia")}
+                className={`px-6 py-2 text-xs font-bold rounded uppercase tracking-wider transition-all flex items-center gap-2 ${viewMode === "aderencia" ? "bg-[#C7A347] text-black shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
+              >
+                <Activity className="h-3 w-3" /> Aderência
+              </button>
             </div>
           </div>
 
@@ -811,6 +891,10 @@ const GestaoMetas = () => {
                 </p>
               )}
             </div>
+          )}
+
+          {viewMode === "aderencia" && (
+            <AdherenceRanking data={adherenceData || []} isLoading={isLoadingAdherence} />
           )}
         </div>
 
