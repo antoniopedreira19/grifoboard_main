@@ -14,10 +14,26 @@ export interface RankingItem extends GamificationProfile {
   position?: number;
 }
 
+// Tipos de ação válidos e seus XP máximos (espelham o banco)
+const XP_CONFIG = {
+  TAREFA_CONCLUIDA: 30,
+  DIARIO_CRIADO: 25,
+  CONTRATACAO_FAST: 50,
+  ECONOMIA_PLAYBOOK: 100,
+  PMP_ATIVIDADE_CONCLUIDA: 50,
+  PMP_RESTRICAO_CONCLUIDA: 20,
+} as const;
+
+type ActionType = keyof typeof XP_CONFIG;
+
 export const gamificationService = {
   // 1. Busca o perfil do usuário atual
   async getProfile(userId: string) {
-    const { data, error } = await supabase.from("gamification_profiles").select("*").eq("id", userId).maybeSingle();
+    const { data, error } = await supabase
+      .from("gamification_profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
 
     if (error) {
       console.error("Erro ao buscar perfil:", error);
@@ -29,7 +45,6 @@ export const gamificationService = {
   // 2. Busca o Ranking Global ou por Empresa (Top 20)
   async getRanking(empresaId?: string | null) {
     try {
-      // Usar a função RPC que permite ver ranking global de todas empresas
       const { data: rankingData, error: rankingError } = await supabase
         .rpc("get_grifoway_ranking", {
           p_empresa_id: empresaId || null,
@@ -62,7 +77,11 @@ export const gamificationService = {
 
   // 3. Busca empresa_id do usuário atual
   async getUserEmpresaId(userId: string) {
-    const { data, error } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).maybeSingle();
+    const { data, error } = await supabase
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", userId)
+      .maybeSingle();
 
     if (error) {
       console.error("Erro ao buscar empresa do usuário:", error);
@@ -71,137 +90,117 @@ export const gamificationService = {
     return data?.empresa_id || null;
   },
 
-  // 4. Dar XP (Positivo)
-  async awardXP(userId: string, action: string, amount: number, referenceId?: string) {
+  // 4. Dar XP (usando função segura do banco - atômica e validada)
+  async awardXP(userId: string, action: ActionType, amount: number, referenceId?: string) {
     try {
-      if (referenceId) {
-        const { data: existing } = await supabase
-          .from("gamification_logs")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("reference_id", referenceId)
-          .eq("action_type", action)
-          .maybeSingle();
-
-        if (existing) return;
+      // Validação local antes de chamar o banco
+      if (!XP_CONFIG[action]) {
+        console.warn(`Ação de gamificação inválida: ${action}`);
+        return { success: false, error: "Ação inválida" };
       }
 
-      const { error: logError } = await supabase.from("gamification_logs").insert({
-        user_id: userId,
-        action_type: action,
-        xp_amount: amount,
-        reference_id: referenceId,
+      const maxAllowed = XP_CONFIG[action];
+      if (amount > maxAllowed || amount < 0) {
+        console.warn(`XP inválido para ${action}: ${amount} (max: ${maxAllowed})`);
+        return { success: false, error: "XP inválido" };
+      }
+
+      // Chamar função segura do banco (atômica, previne race conditions)
+      const { data, error } = await supabase.rpc("award_xp", {
+        p_user_id: userId,
+        p_action_type: action,
+        p_xp_amount: amount,
+        p_reference_id: referenceId || null,
       });
 
-      if (logError) throw logError;
+      if (error) {
+        console.error("Erro ao dar XP:", error);
+        return { success: false, error: error.message };
+      }
 
-      await this.updateProfileXP(userId, amount);
+      const result = data as { success: boolean; error?: string; already_awarded?: boolean; xp_total?: number; level?: number };
 
-      toast({
-        title: `+${amount} XP Conquistado! 🦅`,
-        description: `Ação: ${formatActionName(action)}`,
-        variant: "gold",
-        duration: 3000,
-      });
+      if (result.success) {
+        toast({
+          title: `+${amount} XP Conquistado! 🦅`,
+          description: `Ação: ${formatActionName(action)}`,
+          variant: "gold",
+          duration: 3000,
+        });
+      } else if (result.already_awarded) {
+        // Silenciosamente ignora se já foi concedido (não é erro, é proteção)
+        console.log(`XP já concedido anteriormente para ${action}:${referenceId}`);
+      } else {
+        console.warn("Falha ao dar XP:", result.error);
+      }
+
+      return result;
     } catch (error) {
       console.error("Erro ao dar XP:", error);
+      return { success: false, error: "Erro inesperado" };
     }
   },
 
-  // 5. Remover XP (Quando desfaz uma ação)
-  async removeXP(userId: string, actionToCheck: string, amountToRemove: number, referenceId: string) {
+  // 5. Remover XP (usando função segura do banco)
+  async removeXP(userId: string, actionToCheck: ActionType, _amountToRemove: number, referenceId: string) {
     try {
-      const { data: existingLog } = await supabase
-        .from("gamification_logs")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("reference_id", referenceId)
-        .eq("action_type", actionToCheck)
-        .maybeSingle();
-
-      if (existingLog) {
-        await supabase.from("gamification_logs").delete().eq("id", existingLog.id);
-      } else {
-        return;
-      }
-
-      await this.updateProfileXP(userId, -Math.abs(amountToRemove));
-
-      toast({
-        title: `XP Revertido`,
-        description: "Status alterado. Continue focado!",
-        variant: "destructive",
-        duration: 3000,
+      const { data, error } = await supabase.rpc("remove_xp", {
+        p_user_id: userId,
+        p_action_type: actionToCheck,
+        p_reference_id: referenceId,
       });
-    } catch (error) {
-      console.error("Erro ao remover XP:", error);
-    }
-  },
 
-  async updateProfileXP(userId: string, amountToAdd: number) {
-    const { data: profile } = await supabase
-      .from("gamification_profiles")
-      .select("xp_total")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const currentXP = profile?.xp_total || 0;
-    const newXP = Math.max(0, currentXP + amountToAdd);
-    const newLevel = Math.floor(newXP / 1000) + 1;
-
-    await supabase.from("gamification_profiles").upsert({
-      id: userId,
-      xp_total: newXP,
-      level_current: newLevel,
-      last_activity_date: new Date().toISOString(),
-    });
-  },
-
-  // Remove all XP earned from playbook for a specific obra (including contracting)
-  async removePlaybookXP(userId: string, obraId: string) {
-    try {
-      const actionTypes = ["ECONOMIA_PLAYBOOK", "CONTRATACAO_FAST"];
-      let totalXPToRemove = 0;
-
-      for (const actionType of actionTypes) {
-        // Find all logs for this action type and obra
-        const { data: logs, error: fetchError } = await supabase
-          .from("gamification_logs")
-          .select("id, xp_amount")
-          .eq("user_id", userId)
-          .eq("action_type", actionType)
-          .like("reference_id", `${obraId}%`);
-
-        if (fetchError) throw fetchError;
-        if (!logs || logs.length === 0) continue;
-
-        // Calculate XP to remove for this action type
-        totalXPToRemove += logs.reduce((sum, log) => sum + (log.xp_amount || 0), 0);
-
-        // Delete all logs for this action type and obra
-        const { error: deleteError } = await supabase
-          .from("gamification_logs")
-          .delete()
-          .eq("user_id", userId)
-          .eq("action_type", actionType)
-          .like("reference_id", `${obraId}%`);
-
-        if (deleteError) throw deleteError;
+      if (error) {
+        console.error("Erro ao remover XP:", error);
+        return { success: false, error: error.message };
       }
 
-      // Update profile XP
-      if (totalXPToRemove > 0) {
-        await this.updateProfileXP(userId, -totalXPToRemove);
+      const result = data as { success: boolean; error?: string; xp_removed?: number };
 
+      if (result.success && result.xp_removed && result.xp_removed > 0) {
         toast({
-          title: `XP do Playbook Removido`,
-          description: `${totalXPToRemove} XP foram revertidos.`,
+          title: `XP Revertido`,
+          description: "Status alterado. Continue focado!",
           variant: "destructive",
           duration: 3000,
         });
       }
+
+      return result;
+    } catch (error) {
+      console.error("Erro ao remover XP:", error);
+      return { success: false, error: "Erro inesperado" };
+    }
+  },
+
+  // 6. Remover XP do Playbook de uma obra (usando função segura do banco)
+  async removePlaybookXP(userId: string, obraId: string) {
+    try {
+      const { data, error } = await supabase.rpc("remove_playbook_xp", {
+        p_user_id: userId,
+        p_obra_id: obraId,
+      });
+
+      if (error) {
+        console.error("Erro ao remover XP do playbook:", error);
+        return { success: false, error: error.message };
+      }
+
+      const result = data as { success: boolean; xp_removed?: number };
+
+      if (result.success && result.xp_removed && result.xp_removed > 0) {
+        toast({
+          title: `XP do Playbook Removido`,
+          description: `${result.xp_removed} XP foram revertidos.`,
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+
+      return result;
     } catch (error) {
       console.error("Erro ao remover XP do playbook:", error);
+      return { success: false, error: "Erro inesperado" };
     }
   },
 };

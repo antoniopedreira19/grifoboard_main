@@ -1654,6 +1654,15 @@ export type Database = {
       }
     }
     Functions: {
+      award_xp: {
+        Args: {
+          p_action_type: string
+          p_reference_id?: string
+          p_user_id: string
+          p_xp_amount: number
+        }
+        Returns: Json
+      }
       check_email_exists_global: {
         Args: { email_to_check: string }
         Returns: string
@@ -1713,6 +1722,18 @@ export type Database = {
           metadata: Json
           similarity: number
         }[]
+      }
+      remove_playbook_xp: {
+        Args: { p_obra_id: string; p_user_id: string }
+        Returns: Json
+      }
+      remove_xp: {
+        Args: {
+          p_action_type: string
+          p_reference_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
