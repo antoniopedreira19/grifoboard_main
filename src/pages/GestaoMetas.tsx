@@ -190,17 +190,10 @@ const GestaoMetas = () => {
     queryFn: async () => {
       if (!dashboardData?.empresa_id) return [];
 
-      // 1. Buscar usuários da empresa com perfis de gamificação
-      const { data: usersWithProfiles, error: usersError } = await supabase
+      // 1. Buscar usuários da empresa
+      const { data: usersData, error: usersError } = await supabase
         .from("usuarios")
-        .select(`
-          id,
-          nome,
-          gamification_profiles (
-            xp_total,
-            level_current
-          )
-        `)
+        .select("id, nome")
         .eq("empresa_id", dashboardData.empresa_id)
         .order("nome");
 
@@ -209,9 +202,26 @@ const GestaoMetas = () => {
         return [];
       }
 
-      // 2. Para cada usuário, buscar contagem de logs por action_type
-      const userIds = (usersWithProfiles || []).map((u) => u.id);
-      
+      const users = usersData || [];
+      const userIds = users.map((u) => u.id);
+      if (userIds.length === 0) return [];
+
+      // 2. Buscar perfis de gamificação (sem relacionamento FK)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("gamification_profiles")
+        .select("id, xp_total, level_current")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error("Erro ao buscar perfis de gamificação:", profilesError);
+      }
+
+      const profilesById = new Map<string, { xp_total: number | null; level_current: number | null }>();
+      (profilesData || []).forEach((p: any) => {
+        if (p?.id) profilesById.set(p.id, { xp_total: p.xp_total ?? 0, level_current: p.level_current ?? 1 });
+      });
+
+      // 3. Buscar contagem de logs por action_type
       const { data: logsData, error: logsError } = await supabase
         .from("gamification_logs")
         .select("user_id, action_type")
@@ -224,17 +234,14 @@ const GestaoMetas = () => {
       // Agregar logs por usuário e tipo
       const logsMap: Record<string, Record<string, number>> = {};
       (logsData || []).forEach((log) => {
-        if (!logsMap[log.user_id]) {
-          logsMap[log.user_id] = {};
-        }
+        if (!log.user_id || !log.action_type) return;
+        if (!logsMap[log.user_id]) logsMap[log.user_id] = {};
         logsMap[log.user_id][log.action_type] = (logsMap[log.user_id][log.action_type] || 0) + 1;
       });
 
       // Mapear para estrutura de aderência
-      const result = (usersWithProfiles || []).map((user) => {
-        const profile = Array.isArray(user.gamification_profiles)
-          ? user.gamification_profiles[0]
-          : user.gamification_profiles;
+      const result = users.map((user) => {
+        const profile = profilesById.get(user.id);
         const userLogs = logsMap[user.id] || {};
 
         return {
