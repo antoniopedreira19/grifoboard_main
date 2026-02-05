@@ -280,7 +280,15 @@ const DiarioObra = () => {
     
     setIsDeleting(true);
     try {
+      // Guardar o ID antes de deletar para remover XP
+      const diarioIdToRemove = diarioId;
+      
       await diarioService.delete(diarioId);
+      
+      // Remover XP que foi dado quando o diário foi criado
+      if (userSession?.user?.id) {
+        gamificationService.removeXP(userSession.user.id, "DIARIO_CRIADO", 25, diarioIdToRemove);
+      }
       
       // Reset form and state
       setDiarioId(null);
