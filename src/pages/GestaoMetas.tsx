@@ -682,9 +682,12 @@ const GestaoMetas = () => {
                     <div className="text-xl font-bold text-white truncate">
                       {topSquad.nome}
                     </div>
-                    <Badge className="bg-[#C7A347] text-black font-bold text-xs">
-                      #1
-                    </Badge>
+                    <div className="flex flex-col items-end">
+                      <Badge className="bg-[#C7A347] text-black font-bold text-xs">
+                        #1
+                      </Badge>
+                      <span className="text-[8px] text-slate-500 uppercase mt-0.5">Aderência</span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -697,12 +700,18 @@ const GestaoMetas = () => {
                         {formatCurrency(topSquad.lucroConsolidado)}
                       </p>
                     </div>
-                    <div className="col-span-2">
-                      <p className="text-[10px] text-slate-500 uppercase">Margem Consolidada</p>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">Margem Cons.</p>
                       <p
                         className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= 18 ? "text-emerald-400" : "text-red-400"}`}
                       >
                         {topSquad.margemConsolidada.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">NPS</p>
+                      <p className="text-sm font-mono text-[#C7A347] font-bold">
+                        {topSquad.nps_medio !== null ? topSquad.nps_medio.toFixed(1) : "-"}
                       </p>
                     </div>
                   </div>
