@@ -627,13 +627,13 @@ const GestaoMetas = () => {
                   <>
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-[10px] text-amber-400 uppercase tracking-wider">Lucro Previsto</p>
+                        <p className="text-[10px] text-white uppercase tracking-wider">Lucro Previsto</p>
                         <p className={`text-lg font-mono font-bold ${isPrevistoBelowAlvo ? "text-red-400" : "text-emerald-400"}`}>
                           {formatCurrency(totalLucroPrevisto)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-amber-400 uppercase tracking-wider">Margem Prev.</p>
+                        <p className="text-[10px] text-white uppercase tracking-wider">Margem Prev.</p>
                         <p className={`text-lg font-mono font-bold ${isPrevistoBelowAlvo ? "text-red-400" : "text-emerald-400"}`}>
                           {margemPrevista.toFixed(2)}%
                         </p>
@@ -645,13 +645,13 @@ const GestaoMetas = () => {
                     {/* Lucro Consolidado - Vermelho se menor que Previsto e margem também menor */}
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Lucro Consolidado</p>
+                        <p className="text-[10px] text-white uppercase tracking-wider">Lucro Consolidado</p>
                         <p className={`text-lg font-mono font-bold ${isConsolidadoWorse ? "text-red-400" : "text-emerald-400"}`}>
                           {formatCurrency(totalLucroConsolidado)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-emerald-400 uppercase tracking-wider">Margem Cons.</p>
+                        <p className="text-[10px] text-white uppercase tracking-wider">Margem Cons.</p>
                         <p className={`text-lg font-mono font-bold ${isConsolidadoWorse ? "text-red-400" : "text-emerald-400"}`}>
                           {margemConsolidada.toFixed(2)}%
                         </p>
