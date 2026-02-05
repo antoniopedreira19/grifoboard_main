@@ -1,135 +1,97 @@
 
-# Plano de Correcao - Filtros Persistentes no PCP
+# Plano: Aderência ao Sistema na Gestão de Metas
 
-## Problema Identificado
+## Objetivo
+Adicionar uma nova seção na página de Gestão de Metas que mostra métricas de aderência ao sistema, incluindo ranking de uso, breakdown por feature (Diário, PMP, PCP, Playbook) e visualização detalhada por usuário.
 
-Quando o usuario atualiza o status de uma tarefa, os filtros aplicados (setor, disciplina, executante, etc.) sao resetados. A causa raiz e uma **arquitetura fragmentada de gerenciamento de estado**:
+## Arquitetura de Dados
 
-1. **`useTaskActions.ts`** recalcula `filteredTasks` usando apenas `filterTasksByWeek()`, ignorando os filtros visuais
-2. **`TaskFilters.tsx`** tambem atualiza `filteredTasks` via callback `onFiltersChange`
-3. **`TaskList.tsx`** tem um `useEffect` que sobrescreve `filteredTasks` quando `tasks` muda
+Os dados necessários já existem no banco de dados:
 
-Resultado: ao atualizar uma tarefa, o estado sobrescreve os filtros aplicados pelo usuario.
+| Tabela | Uso |
+|--------|-----|
+| `gamification_profiles` | XP total, nível e última atividade de cada usuário |
+| `gamification_logs` | Logs detalhados por action_type (TAREFA_CONCLUIDA, DIARIO_CRIADO, PMP_ATIVIDADE_CONCLUIDA, etc.) |
+| `usuarios` | Nome e empresa_id dos usuários |
 
-## Solucao Proposta
+Os `action_types` mapeiam para features:
+- **PCP**: `TAREFA_CONCLUIDA` (30 XP)
+- **Diário de Obra**: `DIARIO_CRIADO` (25 XP)
+- **PMP Atividades**: `PMP_ATIVIDADE_CONCLUIDA` (50 XP)
+- **PMP Restrições**: `PMP_RESTRICAO_CONCLUIDA` (20 XP)
+- **Playbook**: `CONTRATACAO_FAST` (50 XP), `ECONOMIA_PLAYBOOK` (100 XP)
 
-Centralizar a logica de filtragem no componente `TaskFilters` e garantir que atualizacoes de tarefas preservem os filtros ativos.
+## Design da Interface
 
-### Estrategia
+Uma nova aba "Aderência" será adicionada ao switcher existente (Squads | Obras | **Aderência**):
 
-1. **Mover estado dos filtros para o `TaskList`** - os filtros deixam de ser locais ao `TaskFilters` e passam a ser controlados pelo componente pai
-2. **`useTaskActions` nao deve chamar `setFilteredTasks`** - apenas atualiza `tasks`, deixando a filtragem para o fluxo normal dos componentes
-3. **`TaskFilters` recalcula sempre que `tasks` muda** - usando os filtros atuais
+```text
++--------------------------------------------------+
+| RANKING DE ADERÊNCIA                             |
++--------------------------------------------------+
+|  #  | Usuário      | XP Total | Nível | Features |
+|-----|--------------|----------|-------|----------|
+|  1  | Matheus      | 6230 XP  |   7   | [badges] |
+|  2  | V&V          | 5850 XP  |   6   | [badges] |
+|  3  | Heitor       | 3790 XP  |   4   | [badges] |
++--------------------------------------------------+
+```
 
----
+Cada linha mostrará badges coloridos indicando quais features o usuário utiliza:
+- Verde: PCP (tarefas)
+- Azul: Diário de Obra
+- Roxo: PMP
+- Dourado: Playbook
+
+## Implementação Técnica
+
+### 1. Nova Query para dados de aderência
+Buscar do banco:
+- Perfis de gamificação com join em usuários (filtrado por empresa)
+- Logs agrupados por user_id e action_type (contagens)
+
+### 2. Novo componente: `AdherenceRanking`
+- Lista rankeada de usuários por XP
+- Indicadores visuais de quais features cada um usa
+- Progresso geral da equipe
+
+### 3. Cards de Resumo (topo da seção)
+- Total de usuários ativos
+- Feature mais utilizada
+- Média de XP da equipe
+- Usuário mais engajado
+
+### 4. Integração na página
+- Adicionar botão "Aderência" no switcher de viewMode
+- Renderizar condicionalmente quando `viewMode === "aderencia"`
+
+## Estrutura de Componentes
+
+```text
+GestaoMetas.tsx
+├── Query: useQuery(['aderencia', empresa_id])
+│   ├── gamification_profiles (join usuarios)
+│   └── gamification_logs (agregado por user/action)
+│
+├── ViewMode Switcher: [Squads] [Obras] [Aderência]
+│
+└── {viewMode === "aderencia" && (
+    ├── Cards de Resumo (4 KPIs)
+    └── Tabela de Ranking com badges de features
+)}
+```
 
 ## Arquivos a Modificar
 
-### 1. `src/hooks/task/useTaskActions.ts`
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/pages/GestaoMetas.tsx` | Adicionar nova query, estado de aderência, nova seção de visualização |
 
-**Problema:** Linhas 85-91 sobrescrevem os filtros visuais.
+## Detalhes de UI
 
-**Solucao:** Remover as chamadas a `filterTasksByWeek` e `setFilteredTasks` das funcoes de update/delete/create. Apenas atualizar o estado `tasks` e deixar o fluxo reativo do React fazer a filtragem.
-
-```text
-Antes (linha 85-91):
-const updatedTasks = tasks.map((task) => ...);
-setTasks(updatedTasks);
-const updatedFilteredTasks = filterTasksByWeek(updatedTasks, weekStartDate);
-setFilteredTasks(updatedFilteredTasks);
-calculatePCPData(updatedFilteredTasks);
-
-Depois:
-const updatedTasks = tasks.map((task) => ...);
-setTasks(updatedTasks);
-// Filtros serao recalculados automaticamente pelo TaskFilters
-```
-
-### 2. `src/components/TaskList.tsx`
-
-**Problema:** O `useEffect` na linha 58-60 reseta para `tasksAfterCauseFilter` sempre que `tasks` muda, ignorando outros filtros.
-
-**Solucao:** Remover este `useEffect`. O `TaskFilters` ja chama `onFiltersChange` quando `processedTasks` muda (que depende de `tasks`).
-
-### 3. `src/components/task/TaskFilters.tsx`
-
-**Problema:** O `useEffect` na linha 116-126 reseta TODOS os filtros quando `selectedCause` muda.
-
-**Solucao:** Remover este reset automatico ou torna-lo opcional. Os filtros so devem ser resetados quando o usuario explicitamente clicar em "Limpar Filtros".
-
----
-
-## Fluxo Corrigido
-
-```text
-Usuario muda status da tarefa
-        |
-        v
-  TaskCard.onUpdate()
-        |
-        v
-  useTaskActions.handleTaskUpdate()
-        |
-        v
-  setTasks(updatedTasks)  <-- Apenas atualiza o estado global
-        |
-        v
-  [React detecta mudanca em "tasks"]
-        |
-        v
-  TaskFilters recalcula processedTasks
-  (usando filtros ATUAIS do usuario)
-        |
-        v
-  onFiltersChange(processedTasks)
-        |
-        v
-  UI atualiza mantendo filtros
-```
-
----
-
-## Mudancas Detalhadas
-
-### Arquivo: `src/hooks/task/useTaskActions.ts`
-
-1. Remover parametros `filterTasksByWeek` e `setFilteredTasks` da interface `TaskActionsProps`
-2. Nas funcoes `handleTaskUpdate`, `handleTaskDelete`, `handleTaskCreate`, `handleTaskDuplicate`, `handleCopyToNextWeek`:
-   - Remover chamadas a `filterTasksByWeek()`
-   - Remover chamadas a `setFilteredTasks()`
-   - Manter apenas `setTasks()` e `calculatePCPData()` (com tasks completas para PCP global)
-
-### Arquivo: `src/hooks/useTaskManager.tsx`
-
-1. Remover passagem de `filterTasksByWeek` e `setFilteredTasks` para `useTaskActions`
-2. O `useEffect` que filtra por semana (linhas 80-104) continua funcionando para sincronizar `filteredTasks` quando a semana muda
-
-### Arquivo: `src/components/TaskList.tsx`
-
-1. Remover o `useEffect` que chama `setFilteredTasks(tasksAfterCauseFilter)` (linhas 58-60)
-2. Inicializar `filteredTasks` com um array vazio e deixar o `TaskFilters` popular via callback
-
-### Arquivo: `src/components/task/TaskFilters.tsx`
-
-1. Remover o `useEffect` que reseta filtros quando `selectedCause` muda (linhas 116-126)
-2. Alternativa: manter o reset apenas do termo de busca, preservando os outros filtros
-
----
-
-## Resultado Esperado
-
-| Cenario | Antes | Depois |
-|---------|-------|--------|
-| Mudar status com filtro ativo | Filtro resetado | Filtro mantido |
-| Navegar entre semanas | OK | OK |
-| Criar nova tarefa | Filtros resetados | Filtros mantidos |
-| Deletar tarefa | Filtros resetados | Filtros mantidos |
-
----
-
-## Testes Recomendados
-
-1. Aplicar filtro por Setor -> Mudar status de tarefa -> Verificar se filtro permanece
-2. Aplicar multiplos filtros -> Editar tarefa -> Verificar todos os filtros
-3. Navegar para outra semana -> Voltar -> Verificar se filtros persistem (opcional)
-4. Clicar em "Limpar Filtros" -> Verificar se todos limpam
+- Manter estética escura (slate-900/950) consistente com a página
+- Usar cores do tema dourado (#C7A347) para destaques
+- Badges coloridos para cada feature
+- Ícones: `Activity` (aderência), `BookOpen` (diário), `ListTodo` (PCP), `Target` (PMP), `Handshake` (Playbook)
+- Progress bars mostrando engajamento por feature
+- Medalhas para top 3 (ouro, prata, bronze)
