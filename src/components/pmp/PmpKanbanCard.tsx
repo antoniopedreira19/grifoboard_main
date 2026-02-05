@@ -9,7 +9,7 @@ import { safeDateRangeDisplay, isDateOverdue } from "@/utils/pmpDateUtils";
 interface PmpKanbanCardProps {
   atividade: PmpAtividade;
   weekId: string;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string, wasConcluido: boolean) => void;
   onToggleCheck?: (id: string, currentStatus: boolean, hasRestrictions: boolean) => void;
   onClick?: (atividade: PmpAtividade) => void;
   isOverlay?: boolean;
@@ -246,7 +246,7 @@ export const PmpKanbanCard = memo(function PmpKanbanCard({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(atividade.id);
+            onDelete(atividade.id, atividade.concluido ?? false);
           }}
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all"
         >

@@ -149,8 +149,8 @@ const PMP = () => {
   );
 
   const handleDelete = useCallback(
-    (id: string) => {
-      deleteMutation.mutate(id);
+    (id: string, wasConcluido: boolean = false) => {
+      deleteMutation.mutate({ id, wasConcluido });
     },
     [deleteMutation]
   );

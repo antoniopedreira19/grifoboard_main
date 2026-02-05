@@ -108,7 +108,16 @@ export const useTaskActions = ({
   const handleTaskDelete = useCallback(
     async (taskId: string) => {
       try {
+        // Buscar a tarefa antes de excluir para verificar se tinha XP
+        const taskToDelete = tasks.find((t) => t.id === taskId);
+        const wasCompleted = taskToDelete?.isFullyCompleted;
+
         await tarefasService.excluirTarefa(taskId);
+
+        // Se a tarefa estava concluída, remover o XP que foi dado
+        if (wasCompleted && userSession?.user?.id) {
+          gamificationService.removeXP(userSession.user.id, "TAREFA_CONCLUIDA", 30, taskId);
+        }
 
         // Remover a tarefa localmente
         const updatedTasks = tasks.filter((task) => task.id !== taskId);
@@ -133,7 +142,7 @@ export const useTaskActions = ({
         return false;
       }
     },
-    [tasks, toast, calculatePCPData, setTasks],
+    [tasks, toast, calculatePCPData, setTasks, userSession],
   );
 
   // Função para criar uma nova tarefa

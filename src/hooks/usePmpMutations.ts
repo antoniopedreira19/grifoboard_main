@@ -123,10 +123,15 @@ export const usePmpMutations = (obraId: string | undefined) => {
 
   // Mutation: Deletar Atividade
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, wasConcluido }: { id: string; wasConcluido: boolean }) => {
       await pmpService.deleteAtividade(id);
+      return { id, wasConcluido };
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      // Se a atividade estava concluída, remover o XP que foi dado
+      if (data.wasConcluido && userId) {
+        await gamificationService.removeXP(userId, "PMP_ATIVIDADE_CONCLUIDA", 50, data.id);
+      }
       queryClient.invalidateQueries({ queryKey: atividadesKey });
       toast({ title: "Removido!" });
     },
@@ -183,10 +188,15 @@ export const usePmpMutations = (obraId: string | undefined) => {
 
   // Mutation: Deletar Restrição
   const deleteRestricaoMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, wasResolvido }: { id: string; wasResolvido: boolean }) => {
       await pmpService.deleteRestricao(id);
+      return { id, wasResolvido };
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      // Se a restrição estava resolvida, remover o XP que foi dado
+      if (data.wasResolvido && userId) {
+        await gamificationService.removeXP(userId, "PMP_RESTRICAO_CONCLUIDA", 20, data.id);
+      }
       queryClient.invalidateQueries({ queryKey: atividadesKey });
     },
   });
