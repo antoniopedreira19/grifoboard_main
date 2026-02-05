@@ -678,8 +678,13 @@ const GestaoMetas = () => {
             <CardContent className="relative z-10">
               {topSquad ? (
                 <div className="space-y-3">
-                  <div className="text-xl font-bold text-white truncate border-b border-slate-700/50 pb-2">
-                    {topSquad.nome}
+                  <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
+                    <div className="text-xl font-bold text-white truncate">
+                      {topSquad.nome}
+                    </div>
+                    <Badge className="bg-[#C7A347] text-black font-bold text-xs">
+                      #1
+                    </Badge>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -687,17 +692,15 @@ const GestaoMetas = () => {
                       <p className="text-sm font-mono text-slate-200">{formatCurrency(topSquad.faturamento)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-amber-400 uppercase">Margem Prev.</p>
-                      <p
-                        className={`text-sm font-mono font-bold ${topSquad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
-                      >
-                        {topSquad.margemPrevista.toFixed(1)}%
+                      <p className="text-[10px] text-slate-500 uppercase">Lucro Cons.</p>
+                      <p className="text-sm font-mono text-emerald-400 font-bold">
+                        {formatCurrency(topSquad.lucroConsolidado)}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-emerald-400 uppercase">Margem Cons.</p>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-slate-500 uppercase">Margem Consolidada</p>
                       <p
-                        className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
+                        className={`text-sm font-mono font-bold ${topSquad.margemConsolidada >= 18 ? "text-emerald-400" : "text-red-400"}`}
                       >
                         {topSquad.margemConsolidada.toFixed(1)}%
                       </p>
