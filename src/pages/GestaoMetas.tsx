@@ -781,22 +781,24 @@ const GestaoMetas = () => {
                       <span className="font-mono text-amber-300">{formatCurrency(squad.lucroPrevisto)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Lucro Consolidado</span>
-                      <span className="font-mono text-emerald-300">{formatCurrency(squad.lucroConsolidado)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
                       <span className="text-amber-400 text-xs uppercase tracking-wider">Margem Prevista</span>
-                      <span
-                        className={`font-mono font-bold ${squad.margemPrevista >= meta.meta_margem_liquida ? "text-amber-300" : "text-amber-500"}`}
-                      >
+                      <span className="font-mono font-bold text-amber-300">
                         {squad.margemPrevista.toFixed(2)}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-emerald-400 text-xs uppercase tracking-wider">Margem Consolidada</span>
-                      <span
-                        className={`font-mono font-bold ${squad.margemConsolidada >= meta.meta_margem_liquida ? "text-emerald-300" : "text-red-400"}`}
-                      >
+                      <span className={`text-xs uppercase tracking-wider ${squad.lucroConsolidado === 0 ? "text-slate-400" : squad.lucroConsolidado < squad.lucroPrevisto ? "text-red-400" : "text-emerald-400"}`}>
+                        Lucro Consolidado
+                      </span>
+                      <span className={`font-mono ${squad.lucroConsolidado === 0 ? "text-slate-400" : squad.lucroConsolidado < squad.lucroPrevisto ? "text-red-400" : "text-emerald-300"}`}>
+                        {formatCurrency(squad.lucroConsolidado)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className={`text-xs uppercase tracking-wider ${squad.margemConsolidada === 0 ? "text-slate-400" : squad.margemConsolidada < squad.margemPrevista ? "text-red-400" : "text-emerald-400"}`}>
+                        Margem Consolidada
+                      </span>
+                      <span className={`font-mono font-bold ${squad.margemConsolidada === 0 ? "text-slate-400" : squad.margemConsolidada < squad.margemPrevista ? "text-red-400" : "text-emerald-300"}`}>
                         {squad.margemConsolidada.toFixed(2)}%
                       </span>
                     </div>
@@ -853,32 +855,44 @@ const GestaoMetas = () => {
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800/50">
-                    <div>
-                      <p className="text-[10px] text-slate-500 uppercase mb-1">Faturamento</p>
-                      <p className="font-mono text-sm text-slate-300">{formatCurrency(obra.faturamento_realizado)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-amber-400 uppercase mb-1">Lucro Prev.</p>
-                      <p className="font-mono text-sm text-amber-300">{formatCurrency(obra.lucro_realizado)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-emerald-400 uppercase mb-1">Lucro Cons.</p>
-                      <p className="font-mono text-sm text-emerald-300">
-                        {formatCurrency(obra.lucro_consolidado || 0)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-slate-500 uppercase mb-1">Margem Cons.</p>
-                      <p
-                        className={`font-mono text-sm font-bold ${obra.faturamento_realizado > 0 ? (((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100 >= meta.meta_margem_liquida ? "text-emerald-400" : "text-amber-500") : "text-slate-500"}`}
-                      >
-                        {obra.faturamento_realizado > 0
-                          ? `${(((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100).toFixed(2)}%`
-                          : "N/A"}
-                      </p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const margemPrev = obra.faturamento_realizado > 0 ? (obra.lucro_realizado / obra.faturamento_realizado) * 100 : 0;
+                    const margemCons = obra.faturamento_realizado > 0 ? ((obra.lucro_consolidado || 0) / obra.faturamento_realizado) * 100 : 0;
+                    const lucroConsolidado = obra.lucro_consolidado || 0;
+                    
+                    return (
+                      <div className="space-y-2 pt-3 border-t border-slate-800/50">
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] text-slate-500 uppercase">Faturamento</p>
+                          <p className="font-mono text-sm text-slate-300">{formatCurrency(obra.faturamento_realizado)}</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] text-amber-400 uppercase">Lucro Previsto</p>
+                          <p className="font-mono text-sm text-amber-300">{formatCurrency(obra.lucro_realizado)}</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] text-amber-400 uppercase">Margem Prevista</p>
+                          <p className="font-mono text-sm text-amber-300">{margemPrev.toFixed(2)}%</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className={`text-[10px] uppercase ${lucroConsolidado === 0 ? "text-slate-400" : lucroConsolidado < obra.lucro_realizado ? "text-red-400" : "text-emerald-400"}`}>
+                            Lucro Consolidado
+                          </p>
+                          <p className={`font-mono text-sm ${lucroConsolidado === 0 ? "text-slate-400" : lucroConsolidado < obra.lucro_realizado ? "text-red-400" : "text-emerald-300"}`}>
+                            {formatCurrency(lucroConsolidado)}
+                          </p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className={`text-[10px] uppercase ${margemCons === 0 ? "text-slate-400" : margemCons < margemPrev ? "text-red-400" : "text-emerald-400"}`}>
+                            Margem Consolidada
+                          </p>
+                          <p className={`font-mono text-sm font-bold ${margemCons === 0 ? "text-slate-400" : margemCons < margemPrev ? "text-red-400" : "text-emerald-300"}`}>
+                            {margemCons.toFixed(2)}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="text-center text-[10px] text-slate-500 pt-2 border-t border-slate-800/30">
                     <Edit3 className="h-3 w-3 inline-block mr-1" />
                     Clique para editar
