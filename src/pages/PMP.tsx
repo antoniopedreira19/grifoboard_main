@@ -61,10 +61,12 @@ const PMP = () => {
   });
   const [restricoesTemp, setRestricoesTemp] = useState<Restricao[]>([]);
 
-  // Inicializa o filtro de semanas quando weeks carrega
+  // Inicializa o filtro de semanas quando weeks carrega - por padrão mostra a última semana
   useEffect(() => {
     if (weeks.length > 0 && weekEndFilter === 0) {
-      setWeekEndFilter(weeks.length - 1);
+      const lastWeekIndex = weeks.length - 1;
+      setWeekStartFilter(lastWeekIndex);
+      setWeekEndFilter(lastWeekIndex);
     }
   }, [weeks.length, weekEndFilter]);
 

@@ -325,18 +325,28 @@ export const PmpKanbanBoard = React.memo(function PmpKanbanBoard({
           </SelectContent>
         </Select>
 
-        {(responsavelFilter !== "todos" || weekStartFilter !== 0 || weekEndFilter !== weeks.length - 1) && (
+        {(weekStartFilter !== 0 || weekEndFilter !== weeks.length - 1) && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            className="h-8 text-xs"
             onClick={() => {
-              onResponsavelFilterChange("todos");
               onWeekStartFilterChange(0);
               onWeekEndFilterChange(weeks.length - 1);
             }}
           >
-            Limpar filtros
+            Mostrar todas
+          </Button>
+        )}
+
+        {responsavelFilter !== "todos" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => onResponsavelFilterChange("todos")}
+          >
+            Limpar responsável
           </Button>
         )}
 
