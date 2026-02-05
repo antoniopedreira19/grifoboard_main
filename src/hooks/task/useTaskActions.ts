@@ -22,9 +22,7 @@ type TaskActionsProps = {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   weekStartDate: Date;
-  filterTasksByWeek: (tasks: Task[], startDate: Date) => Task[];
   calculatePCPData: (tasks: Task[]) => any;
-  setFilteredTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   session: SessionType;
 };
 
@@ -33,9 +31,7 @@ export const useTaskActions = ({
   tasks,
   setTasks,
   weekStartDate,
-  filterTasksByWeek,
   calculatePCPData,
-  setFilteredTasks,
   session,
 }: TaskActionsProps) => {
   const { userSession } = useAuth();
@@ -85,10 +81,8 @@ export const useTaskActions = ({
         const updatedTasks = tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
         setTasks(updatedTasks);
 
-        // Update filtered tasks and PCP data
-        const updatedFilteredTasks = filterTasksByWeek(updatedTasks, weekStartDate);
-        setFilteredTasks(updatedFilteredTasks);
-        calculatePCPData(updatedFilteredTasks);
+        // Recalcular PCP com todas as tarefas (filtros são recalculados automaticamente pelo TaskFilters)
+        calculatePCPData(updatedTasks);
 
         toast({
           title: "Tarefa atualizada",
@@ -107,7 +101,7 @@ export const useTaskActions = ({
         throw error;
       }
     },
-    [tasks, toast, calculatePCPData, filterTasksByWeek, weekStartDate, setTasks, setFilteredTasks, userSession],
+    [tasks, toast, calculatePCPData, setTasks, userSession],
   );
 
   // Função para excluir uma tarefa
@@ -120,10 +114,8 @@ export const useTaskActions = ({
         const updatedTasks = tasks.filter((task) => task.id !== taskId);
         setTasks(updatedTasks);
 
-        // Update filtered tasks and PCP data
-        const updatedFilteredTasks = filterTasksByWeek(updatedTasks, weekStartDate);
-        setFilteredTasks(updatedFilteredTasks);
-        calculatePCPData(updatedFilteredTasks);
+        // Recalcular PCP com todas as tarefas (filtros são recalculados automaticamente pelo TaskFilters)
+        calculatePCPData(updatedTasks);
 
         toast({
           title: "Tarefa excluída",
@@ -141,7 +133,7 @@ export const useTaskActions = ({
         return false;
       }
     },
-    [tasks, toast, calculatePCPData, filterTasksByWeek, weekStartDate, setTasks, setFilteredTasks],
+    [tasks, toast, calculatePCPData, setTasks],
   );
 
   // Função para criar uma nova tarefa
@@ -202,9 +194,8 @@ export const useTaskActions = ({
         const updatedTasks = [novaTask, ...tasks];
         setTasks(updatedTasks);
 
-        const updatedFilteredTasks = filterTasksByWeek(updatedTasks, weekStartDate);
-        setFilteredTasks(updatedFilteredTasks);
-        calculatePCPData(updatedFilteredTasks);
+        // Recalcular PCP com todas as tarefas (filtros são recalculados automaticamente pelo TaskFilters)
+        calculatePCPData(updatedTasks);
 
         toast({
           title: "Tarefa criada",
@@ -222,7 +213,7 @@ export const useTaskActions = ({
         throw error;
       }
     },
-    [session.obraAtiva, tasks, toast, calculatePCPData, filterTasksByWeek, weekStartDate, setTasks, setFilteredTasks],
+    [session.obraAtiva, tasks, toast, calculatePCPData, setTasks],
   );
 
   // Função para duplicar tarefa

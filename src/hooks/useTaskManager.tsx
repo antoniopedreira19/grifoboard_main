@@ -58,9 +58,7 @@ export const useTaskManager = (weekStartDate: Date) => {
       tasks,
       setTasks,
       weekStartDate,
-      filterTasksByWeek,
       calculatePCPData,
-      setFilteredTasks,
       session,
     });
 
