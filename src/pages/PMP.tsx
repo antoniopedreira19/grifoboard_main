@@ -61,14 +61,23 @@ const PMP = () => {
   });
   const [restricoesTemp, setRestricoesTemp] = useState<Restricao[]>([]);
 
-  // Inicializa o filtro de semanas quando weeks carrega - por padrão mostra a última semana
+  // Inicializa o filtro de semanas - começa na primeira semana com atividade não concluída
   useEffect(() => {
     if (weeks.length > 0 && weekEndFilter === 0) {
-      const lastWeekIndex = weeks.length - 1;
-      setWeekStartFilter(lastWeekIndex);
-      setWeekEndFilter(lastWeekIndex);
+      // Encontra a primeira semana que tem atividade não concluída
+      let firstOpenWeekIndex = 0;
+      for (let i = 0; i < weeks.length; i++) {
+        const weekTasks = getTasksForWeek(weeks[i].id);
+        const hasOpenTask = weekTasks.some((t) => !t.concluido);
+        if (hasOpenTask) {
+          firstOpenWeekIndex = i;
+          break;
+        }
+      }
+      setWeekStartFilter(firstOpenWeekIndex);
+      setWeekEndFilter(weeks.length - 1);
     }
-  }, [weeks.length, weekEndFilter]);
+  }, [weeks.length, weekEndFilter, getTasksForWeek]);
 
   // Handlers
   const handleOpenAdd = useCallback((weekId: string) => {
