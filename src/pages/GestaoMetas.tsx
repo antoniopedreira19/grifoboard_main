@@ -258,8 +258,10 @@ const GestaoMetas = () => {
         };
       });
 
-      // Ordenar por XP decrescente
-      return result.sort((a, b) => b.xp_total - a.xp_total);
+      // Filtrar apenas usuários com atividade e ordenar por XP decrescente
+      return result
+        .filter((u) => u.xp_total > 0 || Object.values(u.features).some((v) => v > 0))
+        .sort((a, b) => b.xp_total - a.xp_total);
     },
     enabled: !!dashboardData?.empresa_id,
   });
