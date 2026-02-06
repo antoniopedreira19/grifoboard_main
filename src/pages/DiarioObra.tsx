@@ -411,7 +411,7 @@ const DiarioObra = () => {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto pb-32">
           {/* Header Mobile */}
-          <div className="px-1 pt-2 pb-2 bg-white border-b border-slate-100">
+          <div className="px-4 pt-3 pb-3 bg-white border-b border-slate-100">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">

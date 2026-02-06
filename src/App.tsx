@@ -94,11 +94,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
       <div className="flex flex-col flex-1 w-full overflow-hidden relative">
         {/* Header Mobile: Fixo no topo */}
-        <div className="md:hidden flex items-center justify-between p-3 bg-white border-b border-border shadow-sm z-30 flex-shrink-0 h-14">
-          <div className="flex items-center gap-2">
-            <MobileSidebarTrigger /> {/* Botão Menu Hamburguer */}
-            <span className="font-bold text-primary font-heading text-lg">GrifoBoard</span>
-          </div>
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-border shadow-sm z-30 flex-shrink-0 h-14">
+          <span className="font-bold text-primary font-heading text-lg">GrifoBoard</span>
           <img src="/lovable-uploads/grifo-logo-header.png" className="h-6 w-auto" alt="Logo" />
         </div>
 
