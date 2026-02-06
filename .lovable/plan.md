@@ -1,97 +1,114 @@
 
-# Plano: Aderência ao Sistema na Gestão de Metas
 
-## Objetivo
-Adicionar uma nova seção na página de Gestão de Metas que mostra métricas de aderência ao sistema, incluindo ranking de uso, breakdown por feature (Diário, PMP, PCP, Playbook) e visualização detalhada por usuário.
+# Melhorias Mobile - GrifoBoard
 
-## Arquitetura de Dados
+## Resumo
+Revisao completa da experiencia mobile para tornar o app mais pratico e rapido. Inclui atualizacao das abas do footer, correcao de problemas de UI/UX em cada pagina principal, e otimizacoes de layout.
 
-Os dados necessários já existem no banco de dados:
+---
 
-| Tabela | Uso |
-|--------|-----|
-| `gamification_profiles` | XP total, nível e última atividade de cada usuário |
-| `gamification_logs` | Logs detalhados por action_type (TAREFA_CONCLUIDA, DIARIO_CRIADO, PMP_ATIVIDADE_CONCLUIDA, etc.) |
-| `usuarios` | Nome e empresa_id dos usuários |
+## 1. Atualizar Footer Mobile (Abas de Navegacao)
 
-Os `action_types` mapeiam para features:
-- **PCP**: `TAREFA_CONCLUIDA` (30 XP)
-- **Diário de Obra**: `DIARIO_CRIADO` (25 XP)
-- **PMP Atividades**: `PMP_ATIVIDADE_CONCLUIDA` (50 XP)
-- **PMP Restrições**: `PMP_RESTRICAO_CONCLUIDA` (20 XP)
-- **Playbook**: `CONTRATACAO_FAST` (50 XP), `ECONOMIA_PLAYBOOK` (100 XP)
+**Problema atual:** O footer mostra PMP, PCP, Diario, Grifo AI, Metas. O usuario quer: Obras, PMP, PCP, Diario, GrifoAI e Playbook (6 itens).
 
-## Design da Interface
+**Solucao:** Atualizar `MobileBottomNav.tsx` com as 6 abas solicitadas:
+- Obras (`/obras`) - icone Building2
+- PMP (`/pmp`) - icone KanbanSquare
+- PCP (`/tarefas`) - icone LayoutDashboard
+- Diario (`/diarioobra`) - icone FileText
+- GrifoAI (`/grifo-ai`) - icone Bot
+- Playbook (`/playbook`) - icone BookOpen
 
-Uma nova aba "Aderência" será adicionada ao switcher existente (Squads | Obras | **Aderência**):
+Reduzir o tamanho dos icones e fontes para acomodar 6 itens confortavelmente.
 
-```text
-+--------------------------------------------------+
-| RANKING DE ADERÊNCIA                             |
-+--------------------------------------------------+
-|  #  | Usuário      | XP Total | Nível | Features |
-|-----|--------------|----------|-------|----------|
-|  1  | Matheus      | 6230 XP  |   7   | [badges] |
-|  2  | V&V          | 5850 XP  |   6   | [badges] |
-|  3  | Heitor       | 3790 XP  |   4   | [badges] |
-+--------------------------------------------------+
-```
+---
 
-Cada linha mostrará badges coloridos indicando quais features o usuário utiliza:
-- Verde: PCP (tarefas)
-- Azul: Diário de Obra
-- Roxo: PMP
-- Dourado: Playbook
+## 2. Pagina Obras - Correcoes Mobile
 
-## Implementação Técnica
+**Problemas identificados (conforme screenshot):**
+- Titulo "REFORMA REMBRANDT" quebra de forma estranha, com botoes Editar/Excluir espremidos
+- Cards muito grandes, ocupam tela inteira
+- Padding excessivo
 
-### 1. Nova Query para dados de aderência
-Buscar do banco:
-- Perfis de gamificação com join em usuários (filtrado por empresa)
-- Logs agrupados por user_id e action_type (contagens)
+**Solucao no `ObraCard.tsx`:**
+- No mobile, mover botoes Editar/Excluir para baixo do titulo (empilhar verticalmente)
+- Reduzir tamanho do titulo no mobile
+- Tornar o card mais compacto
 
-### 2. Novo componente: `AdherenceRanking`
-- Lista rankeada de usuários por XP
-- Indicadores visuais de quais features cada um usa
-- Progresso geral da equipe
+**Solucao no `Obras.tsx`:**
+- Reduzir padding e espacamento no mobile
+- Titulo "Minhas Obras" menor no mobile
+- Esconder descricao longa no mobile
 
-### 3. Cards de Resumo (topo da seção)
-- Total de usuários ativos
-- Feature mais utilizada
-- Média de XP da equipe
-- Usuário mais engajado
+---
 
-### 4. Integração na página
-- Adicionar botão "Aderência" no switcher de viewMode
-- Renderizar condicionalmente quando `viewMode === "aderencia"`
+## 3. GrifoAI - Correcoes Mobile
 
-## Estrutura de Componentes
+**Problemas:**
+- Header do chat ocupa espaco desnecessario
+- Altura `calc(100vh-2rem)` nao considera o header mobile (56px) nem o footer (64px)
+- Input pode ficar atras do footer
 
-```text
-GestaoMetas.tsx
-├── Query: useQuery(['aderencia', empresa_id])
-│   ├── gamification_profiles (join usuarios)
-│   └── gamification_logs (agregado por user/action)
-│
-├── ViewMode Switcher: [Squads] [Obras] [Aderência]
-│
-└── {viewMode === "aderencia" && (
-    ├── Cards de Resumo (4 KPIs)
-    └── Tabela de Ranking com badges de features
-)}
-```
+**Solucao no `GrifoAI.tsx`:**
+- No mobile, usar altura que desconta header (56px) + footer (64px) + safe-area
+- Compactar header no mobile (esconder texto "Limpar Conversa", mostrar so icone)
+- Garantir que o input nao fique atras do bottom nav
 
-## Arquivos a Modificar
+---
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/pages/GestaoMetas.tsx` | Adicionar nova query, estado de aderência, nova seção de visualização |
+## 4. PMP (Kanban) - Correcoes Mobile
 
-## Detalhes de UI
+**Problemas:**
+- O kanban horizontal pode ser dificil de navegar no mobile
+- Header pode ter filtros que ocupam muito espaco
 
-- Manter estética escura (slate-900/950) consistente com a página
-- Usar cores do tema dourado (#C7A347) para destaques
-- Badges coloridos para cada feature
-- Ícones: `Activity` (aderência), `BookOpen` (diário), `ListTodo` (PCP), `Target` (PMP), `Handshake` (Playbook)
-- Progress bars mostrando engajamento por feature
-- Medalhas para top 3 (ouro, prata, bronze)
+**Solucao:**
+- Garantir que colunas tenham scroll horizontal fluido
+- Compactar filtros no mobile
+
+---
+
+## 5. PCP (Tarefas/Index) - Correcoes Mobile
+
+**Problemas:**
+- `MainPageContent.tsx` tem padding duplo (AppLayout ja adiciona p-3, e MainPageContent adiciona mais px-3)
+- O tab header nao e sticky no mobile (ja desabilitado intencionalmente), ok manter assim
+
+**Solucao:**
+- Remover padding duplicado no mobile
+- Garantir que `pb-24` seja suficiente para nao ficar atras do footer
+
+---
+
+## 6. Diario de Obra - Verificar Layout
+
+- Verificar que formularios nao ficam atras do footer
+- Garantir que o calendario funciona bem no mobile
+
+---
+
+## 7. Playbook - Nova Aba no Footer
+
+- Verificar que a pagina Playbook renderiza corretamente no mobile
+- Tabela virtualizada precisa funcionar bem em telas pequenas
+
+---
+
+## Detalhes Tecnicos
+
+**Arquivos a modificar:**
+
+| Arquivo | Mudanca |
+|---|---|
+| `src/components/mobile/MobileBottomNav.tsx` | 6 abas: Obras, PMP, PCP, Diario, GrifoAI, Playbook |
+| `src/components/obra/ObraCard.tsx` | Layout responsivo - botoes embaixo no mobile |
+| `src/pages/Obras.tsx` | Reducao de padding/espacamento mobile |
+| `src/pages/GrifoAI.tsx` | Altura correta descontando header+footer, header compacto |
+| `src/components/MainPageContent.tsx` | Remover padding duplicado mobile |
+
+**Arquivos a verificar (ajustes menores se necessario):**
+- `src/pages/DiarioObra.tsx`
+- `src/pages/Playbook.tsx`
+- `src/components/pmp/PmpKanbanBoard.tsx`
+- `src/App.tsx` (AppLayout - verificar padding)
+
