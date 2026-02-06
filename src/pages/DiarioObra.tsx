@@ -90,9 +90,11 @@ const DiarioObra = () => {
   // Carregar dados ao mudar a data ou obra
   useEffect(() => {
     if (obraId) {
-      loadDiario();
-      loadPhotos();
-      loadDiarioHistory();
+      // Run diário + photos in parallel, defer history
+      Promise.all([loadDiario(), loadPhotos()]);
+      // History is non-critical, load it deferred
+      const timer = setTimeout(() => loadDiarioHistory(), 100);
+      return () => clearTimeout(timer);
     }
   }, [date, obraId]);
 

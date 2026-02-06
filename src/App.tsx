@@ -1,11 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { RegistryProvider } from "@/context/RegistryContext";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"; // Import da Sheet
-import { Menu } from "lucide-react"; // Ícone do Menu
+import { LogOut, Menu } from "lucide-react"; // Ícone do Menu
 import { Button } from "@/components/ui/button";
 
 // Imports de Páginas
@@ -47,7 +47,27 @@ const queryClient = new QueryClient({
 
 const masterAdminRoutes = ["/master-admin", "/formularios", "/base-de-dados"];
 
-// --- NOVO COMPONENTE: Menu Mobile Lateral ---
+// --- Botão de Logout Mobile ---
+const MobileLogoutButton = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+      onClick={async () => {
+        await signOut();
+        navigate("/auth");
+      }}
+    >
+      <LogOut className="h-4 w-4" />
+    </Button>
+  );
+};
+
+// --- ANTIGO: Menu Mobile Lateral (mantido para desktop sidebar) ---
 const MobileSidebarTrigger = () => {
   const location = useLocation();
   const isMasterAdminPage = masterAdminRoutes.some((r) => location.pathname.startsWith(r));
@@ -60,7 +80,6 @@ const MobileSidebarTrigger = () => {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-[85%] max-w-[300px] border-r-0 bg-primary">
-        {/* Renderiza o Sidebar correto dentro do menu */}
         {isMasterAdminPage ? <MasterAdminSidebar /> : <CustomSidebar />}
       </SheetContent>
     </Sheet>
@@ -96,7 +115,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Header Mobile: Fixo no topo */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-border shadow-sm z-30 flex-shrink-0 h-14">
           <span className="font-bold text-primary font-heading text-lg">GrifoBoard</span>
-          <img src="/lovable-uploads/grifo-logo-header.png" className="h-6 w-auto" alt="Logo" />
+          <div className="flex items-center gap-2">
+            <MobileLogoutButton />
+            <img src="/lovable-uploads/grifo-logo-header.png" className="h-6 w-auto" alt="Logo" />
+          </div>
         </div>
 
         {/* Conteúdo Principal com Scroll Nativo */}
