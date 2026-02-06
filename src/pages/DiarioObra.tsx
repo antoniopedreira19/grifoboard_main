@@ -655,8 +655,12 @@ const DiarioObra = () => {
                       <Badge variant="secondary" className="h-5 text-xs">{photos.length}</Badge>
                     )}
                   </div>
-                  {isEditMode && <PhotoUploader onUpload={diarioId ? handlePhotoUpload : handleAddPendingPhotos} />}
                 </div>
+                {isEditMode && (
+                  <div className="p-3">
+                    <PhotoUploader onUpload={diarioId ? handlePhotoUpload : handleAddPendingPhotos} />
+                  </div>
+                )}
                 <div className="p-4 min-h-[120px]">
                   {/* Pending Photos */}
                   {!diarioId && pendingPhotos.length > 0 && (
