@@ -95,7 +95,7 @@ const MainPageContent = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-[1600px] px-3 sm:px-6 py-4 md:py-6 min-h-screen pb-24 space-y-4 md:space-y-6">
+    <div className="container mx-auto max-w-[1600px] px-0 sm:px-3 md:px-6 py-2 md:py-6 min-h-screen pb-24 space-y-3 md:space-y-6">
       {/* 1. Header Global */}
       <MainHeader
         onNewTaskClick={() => setIsFormOpen(true)}

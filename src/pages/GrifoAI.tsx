@@ -211,22 +211,22 @@ const GrifoAI = () => {
   const userAvatarUrl = userSession?.user?.user_metadata?.avatar_url;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] max-w-5xl mx-auto gap-4">
+    <div className="flex flex-col h-[calc(100dvh-theme(spacing.14)-theme(spacing.14)-theme(spacing.6))] md:h-[calc(100vh-2rem)] max-w-5xl mx-auto gap-2 md:gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-        <div className="flex items-center gap-3">
-          <img src={grifoLogo} alt="Grifo Logo" className="h-10 w-auto" />
+      <div className="flex items-center justify-between bg-white p-2.5 md:p-4 rounded-xl shadow-sm border border-slate-100">
+        <div className="flex items-center gap-2 md:gap-3">
+          <img src={grifoLogo} alt="Grifo Logo" className="h-7 md:h-10 w-auto" />
           <div>
-            <h1 className="text-xl font-bold text-[#112131]">GrifoAI</h1>
-            <p className="text-xs text-slate-500">Histórico salvo automaticamente</p>
+            <h1 className="text-base md:text-xl font-bold text-[#112131]">GrifoAI</h1>
+            <p className="text-[10px] md:text-xs text-slate-500 hidden md:block">Histórico salvo automaticamente</p>
           </div>
         </div>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-500">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Limpar Conversa
+            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-500 px-2 md:px-3">
+              <Trash2 className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Limpar Conversa</span>
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
