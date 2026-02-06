@@ -249,22 +249,14 @@ const Auth = () => {
 
       {/* --- PAINEL DIREITO: Login --- */}
       <div className="w-full lg:w-[45%] flex flex-col justify-center items-center p-6 lg:p-12 relative z-20 bg-accent/30 overflow-y-auto">
-        {/* Mobile Header */}
-        <div className="lg:hidden absolute top-0 left-0 w-full bg-primary p-6 text-center shadow-md z-30">
-          <img
-            src="/lovable-uploads/grifo-logo-header.png"
-            alt="Grifo Logo"
-            className="grifo-logo-placeholder h-12 mx-auto mb-3 object-contain brightness-0 invert"
-          />
-          <h1 className="text-xl font-heading font-bold text-white">Grifoboard</h1>
-        </div>
+        {/* Mobile Header removed - clean login */}
 
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
           // Ajustes de padding e espaçamento para caber na tela
-          className="w-full max-w-md space-y-6 bg-white p-8 rounded-3xl shadow-2xl shadow-primary/10 border border-border/60 mt-24 lg:mt-0 relative"
+          className="w-full max-w-md space-y-6 bg-white p-8 rounded-3xl shadow-2xl shadow-primary/10 border border-border/60 mt-0 relative"
         >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-1.5 bg-secondary rounded-b-full" />
 
