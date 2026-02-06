@@ -189,16 +189,16 @@ const Playbook = () => {
   }, [obraId, toast, userSession?.user?.id]);
 
   return (
-    <div className="container mx-auto max-w-[1600px] px-4 sm:px-6 py-4 min-h-screen pb-24 space-y-6 bg-slate-50/30">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="container mx-auto max-w-[1600px] px-0 sm:px-6 py-2 md:py-4 min-h-screen pb-24 space-y-4 md:space-y-6 bg-slate-50/30">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <BookOpen className="h-6 w-6 text-primary" />
+          <h1 className="text-xl md:text-3xl font-heading font-bold text-slate-900 flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+              <BookOpen className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             </div>
             Playbook de Obras
           </h1>
-          <p className="text-slate-500 mt-1 ml-1 text-sm max-w-2xl">Gestão orçamentária e contratação.</p>
+          <p className="text-slate-500 mt-0.5 md:mt-1 ml-1 text-xs md:text-sm max-w-2xl">Gestão orçamentária e contratação.</p>
         </div>
 
         <div className="flex items-center gap-2">
