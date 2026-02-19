@@ -41,6 +41,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
         // Se não está na página de login ou reset, manda para login
         if (currentPath !== "/auth" && currentPath !== "/reset-password") {
           console.log("Acesso negado: Sem sessão. Redirecionando para /auth");
+          setChecking(false);
           navigate("/auth", { replace: true });
           return;
         }
@@ -52,6 +53,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       // 4. Usuário LOGADO
       // Se tentar acessar a página de login estando logado, manda para o dashboard
       if (currentPath === "/auth") {
+        setChecking(false);
         navigate("/obras", { replace: true });
         return;
       }
@@ -72,12 +74,14 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
 
         // Regra do Parceiro
         if (role === "parceiro" && !parceiroAllowedRoutes.includes(currentPath)) {
+          setChecking(false);
           navigate("/portal-parceiro", { replace: true });
           return;
         }
 
         // Regra do Usuário Comum (não pode acessar portal parceiro)
         if (role !== "parceiro" && currentPath === "/portal-parceiro") {
+          setChecking(false);
           navigate("/obras", { replace: true });
           return;
         }
